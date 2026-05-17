@@ -1,0 +1,65 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+
+# Production build (загружать на хостинг нужно уже собранную папку dist/)
+dist
+dist-ssr
+
+# Env & secrets — не коммитить ключи API
+*.local
+.env
+.env.*
+!.env.example
+
+# Vite / bundler caches (если уедут из node_modules — не попадают в git)
+.vite
+
+# Lint / tooling
+.eslintcache
+.stylelintcache
+.prettiercache
+
+# Typescript incremental (если tsBuildInfo вне игнорируемых папок)
+*.tsbuildinfo
+
+# Tests / coverage
+coverage
+*.lcov
+.nyc_output
+
+# Turbopack / прочие кэши сборки
+.cache
+.parcel-cache
+.turbo
+
+# Серверная часть локального превью (если когда-нибудь понадобится)
+server-dist
+
+# OS
+.DS_Store
+Desktop.ini
+Thumbs.db
+ehthumbs.db
+*.lnk
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Размытые патчи/мердж
+*.orig
