@@ -25,6 +25,13 @@ export function loadProgress(): ProgressSnapshot {
     if (!raw) return emptySnapshot()
     const parsed = JSON.parse(raw) as ProgressSnapshot
     if (parsed?.v !== 1 || typeof parsed.words !== 'object') return emptySnapshot()
+    const weakLog = Array.isArray(parsed.weakWordLog)
+      ? (parsed.weakWordLog as unknown[])
+          .map((x) => x as { id?: unknown; g?: unknown; at?: unknown })
+          .filter((x) => typeof x.id === 'number' && (x.g === 'again' || x.g === 'hard') && typeof x.at === 'number')
+          .map((x) => ({ id: x.id as number, g: x.g as 'again' | 'hard', at: x.at as number }))
+      : []
+
     return {
       v: 1,
       words: parsed.words ?? {},
@@ -33,6 +40,7 @@ export function loadProgress(): ProgressSnapshot {
         parsed.mastered && typeof parsed.mastered === 'object'
           ? { ...(parsed.mastered as Record<string, true>) }
           : {},
+      weakWordLog: weakLog.length ? weakLog : undefined,
     }
   } catch {
     return emptySnapshot()

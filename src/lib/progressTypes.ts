@@ -18,6 +18,8 @@ export interface CardSchedule {
   lastReviewMs?: number
 }
 
+export type CategoryScopeMode = 'reword' | 'custom'
+
 export interface UserPrefs {
   /** Новых карточек за сессию (верхняя граница) */
   newPerSession: number
@@ -29,6 +31,14 @@ export interface UserPrefs {
   easyIntervalDays: number
   /** Цель «выучено сегодня» на экране «Учить» (только отображение и кольцо прогресса) */
   dailyGoalWords: number
+  /**
+   * Область «все выбранные»: брать словари с флагом из бэкапа Reword или свой список ID категорий.
+   */
+  categoryScopeMode: CategoryScopeMode
+  /** При categoryScopeMode === custom — какие CATEGORY.ID входят в смешанную область */
+  customCategoryIds: string[]
+  /** Активный именованный профиль SRS или null после ручной правки ползунков */
+  srsPresetId: string | null
 }
 
 export const DEFAULT_PREFS: UserPrefs = {
@@ -37,11 +47,26 @@ export const DEFAULT_PREFS: UserPrefs = {
   graduatingIntervalDays: 1,
   easyIntervalDays: 4,
   dailyGoalWords: 15,
+  categoryScopeMode: 'reword',
+  customCategoryIds: [],
+  srsPresetId: null,
+}
+
+/** Фрагмент настроек для SQL-области «selected». */
+export interface CategoryScopePrefs {
+  categoryScopeMode: CategoryScopeMode
+  customCategoryIds: string[]
 }
 
 export type Grade = 'again' | 'hard' | 'good' | 'easy'
 
 export type ImportMode = 'replaceAll' | 'mergeMissing' | 'mergeOverwrite'
+
+export interface WeakWordHit {
+  id: number
+  g: 'again' | 'hard'
+  at: number
+}
 
 export interface ProgressSnapshot {
   v: 1
@@ -49,10 +74,12 @@ export interface ProgressSnapshot {
   prefs: UserPrefs
   /** Слова, вручную исключённые из SRS (не попадают в «Учить» / новое / срочные повторы) */
   mastered?: Record<string, true>
+  /** Последние ответы «Снова» / «Сложно» (по одному свежему попаданию на слово) — для экспорта */
+  weakWordLog?: WeakWordHit[]
 }
 
 export const PROGRESS_LS_KEY = 'vocabdesk-progress-v2'
 
 export function emptySnapshot(): ProgressSnapshot {
-  return { v: 1, words: {}, prefs: { ...DEFAULT_PREFS }, mastered: {} }
+  return { v: 1, words: {}, prefs: { ...DEFAULT_PREFS }, mastered: {}, weakWordLog: [] }
 }

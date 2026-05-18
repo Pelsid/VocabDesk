@@ -14,6 +14,9 @@ node_modules
 dist
 dist-ssr
 
+# Личные заметки и идеи (не в репозитории)
+PRODUCT_IDEAS.private.md
+
 # Env & secrets — не коммитить ключи API
 *.local
 .env

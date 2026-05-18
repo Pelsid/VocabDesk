@@ -1,5 +1,6 @@
 import initSqlJs, { type Database } from 'sql.js'
 import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url'
+import type { CategoryScopePrefs } from '../lib/progressTypes'
 
 let cachedFactory: Awaited<ReturnType<typeof initSqlJs>> | null = null
 
@@ -182,8 +183,50 @@ export function globalSearchWords(db: Database, term: string, limit = 80): WordR
   return rows
 }
 
-export function listWordIdsInScope(db: Database, scope: 'selected' | 'category', categoryId: string | null): number[] {
+function isCustomSelectedScope(scopePrefs?: CategoryScopePrefs | null): boolean {
+  return scopePrefs?.categoryScopeMode === 'custom'
+}
+
+function categoryInClausePlaceholders(ids: string[]): string {
+  return ids.map((_, i) => `$c${i}`).join(', ')
+}
+
+function bindCategoryIds(ids: string[]): Record<string, string> {
+  const o: Record<string, string> = {}
+  ids.forEach((id, i) => {
+    o[`$c${i}`] = id
+  })
+  return o
+}
+
+export function listWordIdsInScope(
+  db: Database,
+  scope: 'selected' | 'category',
+  categoryId: string | null,
+  scopePrefs?: CategoryScopePrefs | null,
+): number[] {
   if (scope === 'category' && !categoryId) return []
+
+  if (scope === 'selected' && isCustomSelectedScope(scopePrefs)) {
+    const cids = scopePrefs!.customCategoryIds ?? []
+    if (cids.length === 0) return []
+
+    const stmt = db.prepare(`
+      SELECT DISTINCT w.ID AS id
+      FROM WORD w
+      JOIN WORD_CATEGORY wc ON wc.WORD_ID = w.ID
+      WHERE wc.CATEGORY_ID IN (${categoryInClausePlaceholders(cids)})
+      ORDER BY w.ID
+    `)
+    stmt.bind(bindCategoryIds(cids))
+    const ids: number[] = []
+    while (stmt.step()) {
+      const r = stmt.getAsObject() as Record<string, unknown>
+      ids.push(Number(r.id))
+    }
+    stmt.free()
+    return ids
+  }
 
   const sqlSelected = `
     SELECT DISTINCT w.ID AS id
@@ -219,8 +262,34 @@ export function sampleRusTranslationsForQuiz(
   categoryId: string | null,
   excludeId: number,
   limit: number,
+  scopePrefs?: CategoryScopePrefs | null,
 ): string[] {
   if (scope === 'category' && !categoryId) return []
+
+  if (scope === 'selected' && isCustomSelectedScope(scopePrefs)) {
+    const cids = scopePrefs!.customCategoryIds ?? []
+    if (cids.length === 0) return []
+
+    const stmt = db.prepare(`
+      SELECT DISTINCT TRIM(w.RUS) AS rus
+      FROM WORD w
+      JOIN WORD_CATEGORY wc ON wc.WORD_ID = w.ID
+      WHERE wc.CATEGORY_ID IN (${categoryInClausePlaceholders(cids)})
+        AND w.ID != $ex
+        AND w.RUS IS NOT NULL AND TRIM(w.RUS) != ''
+      ORDER BY RANDOM()
+      LIMIT $lim
+    `)
+    stmt.bind({ ...bindCategoryIds(cids), $ex: excludeId, $lim: limit })
+    const out: string[] = []
+    while (stmt.step()) {
+      const r = stmt.getAsObject() as Record<string, unknown>
+      const t = String(r.rus ?? '').trim()
+      if (t.length >= 2) out.push(t)
+    }
+    stmt.free()
+    return out
+  }
 
   const sqlSelected = `
     SELECT DISTINCT TRIM(w.RUS) AS rus

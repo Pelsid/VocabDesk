@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# VocabDesk
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Клиентское веб-приложение для работы со словарём из резервной копии [Reword](https://reword.ru): файл **`.backup`** из экспорта Reword (по сути SQLite в бинарном виде). Данные и прогресс хранятся **локально в браузере** (IndexedDB). Интерфейс на русском.
 
-Currently, two official plugins are available:
+## Стек
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Vue 3** (Composition API, `<script setup>`)
+- **TypeScript**
+- **Vite**
+- **Pinia** — прогресс обучения
+- **sql.js** — чтение словарной базы из бэкапа в памяти
 
-## React Compiler
+## Установка
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Скрипты
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Команда      | Описание |
+|-------------|----------|
+| `npm run dev` | режим разработки (по умолчанию хост слушает на всех интерфейсах, порт `5173`) |
+| `npm run build` | проверка типов (`vue-tsc`) и production-сборка |
+| `npm run preview` | предпросмотр собранной версии |
+| `npm run lint` | ESLint для `.ts` и `.vue` |
+| `npm run tunnel` | туннель к dev-серверу через [`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/) (должен быть установлен глобально) |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Первый запуск
+
+1. Запустите `npm run dev` и откройте указанный в консоли URL.
+2. На стартовом экране укажите файл **`.backup`** из экспорта Reword (см. подсказку на экране загрузки).
+3. После успешной загрузки файл кешируется в IndexedDB — при следующем визите словарь подтянется без повторной загрузки (пока не очистите данные сайта).
+
+## Основные разделы приложения
+
+- **Словарь** — просмотр категорий и слов из бэкапа.
+- **Учить** — сессии изучения (картинки, подсказки, SR-подход к прогрессу через хранилище Pinia/`progressStorage`).
+- **Повторение** — слова по графику (due).
+- **Изученное** — уже пройденные позиции.
+- **Новое** — новые слова в очередь.
+
+Через меню данных (**DataMenu**) можно заменить бэкап, экспортировать слабые слова и т. п. Конкретные пункты см. в UI.
+
+## Необязательные возможности через `.env.local`
+
+Создайте в корне проекта файл `.env.local` и перезапустите dev-сервер после изменений.
+
+```env
+# Groq API (совместимо с OpenAI-форматом) — подсказки ИИ при обучении, учёт показателя использования в UI
+VITE_GROQ_API_KEY=your_key_here
+
+# Ключи провайдеров изображений (при отсутствии ключа часть связанной функциональности отключится или будет подсказываться в интерфейсе)
+VITE_PIXABAY_API_KEY=
+VITE_PEXELS_API_KEY=
 ```
+
+Секреты не коммитьте — файл `.env.local` держите вне репозитория.
+
+## Разработка и качество кода
+
+- Конфигурация ESLint: `eslint.config.js` (Vue + TypeScript, flat config).
+- Точки входа: `index.html` → `src/main.ts` → `src/App.vue`.
+
+После добавления новых переменных `VITE_*` при необходимости расширьте описание типов через `vite/client` или локальные типы интерфейса `ImportMetaEnv`.

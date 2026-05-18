@@ -1,5 +1,7 @@
 /** Вызов Groq (OpenAI-compatible) для подсказок при изучении слов. Ключ задавайте в `.env.local`: VITE_GROQ_API_KEY */
 
+import { recordGroqRequest } from './groqUsageTracker'
+
 export const GROQ_MODEL_DEFAULT = 'llama-3.3-70b-versatile'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
@@ -111,7 +113,9 @@ export async function fetchStudyHintFromGroq(input: FetchStudyHintInput): Promis
   if (!content) throw new Error('Пустой ответ от Groq')
 
   try {
-    return parseHintJson(content, input.lemma)
+    const payload = parseHintJson(content, input.lemma)
+    recordGroqRequest()
+    return payload
   } catch {
     throw new Error('Не удалось разобрать JSON подсказки')
   }

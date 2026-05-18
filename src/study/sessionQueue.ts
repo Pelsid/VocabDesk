@@ -20,7 +20,13 @@ export function buildSessionQueue(args: {
   now: number
 }): number[] {
   const mastered = args.snapshot.mastered ?? {}
-  const ids = listWordIdsInScope(args.db, args.scope, args.categoryId).filter((id) => !mastered[String(id)])
+  const scopePrefs = {
+    categoryScopeMode: args.snapshot.prefs.categoryScopeMode,
+    customCategoryIds: args.snapshot.prefs.customCategoryIds ?? [],
+  }
+  const ids = listWordIdsInScope(args.db, args.scope, args.categoryId, scopePrefs).filter(
+    (id) => !mastered[String(id)],
+  )
   const prefs = args.snapshot.prefs
   const words = args.snapshot.words
 
@@ -54,7 +60,13 @@ export function countDueSnapshot(args: {
   now: number
 }) {
   const mastered = args.snapshot.mastered ?? {}
-  const ids = listWordIdsInScope(args.db, args.scope, args.categoryId).filter((id) => !mastered[String(id)])
+  const scopePrefs = {
+    categoryScopeMode: args.snapshot.prefs.categoryScopeMode,
+    customCategoryIds: args.snapshot.prefs.customCategoryIds ?? [],
+  }
+  const ids = listWordIdsInScope(args.db, args.scope, args.categoryId, scopePrefs).filter(
+    (id) => !mastered[String(id)],
+  )
   const words = args.snapshot.words
   let due = 0
   let fresh = 0
