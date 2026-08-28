@@ -127,7 +127,7 @@ function resetProgressOnly() {
 </script>
 
 <template>
-  <button type="button" class="btn-quiet" @click="open = true">Данные</button>
+  <button type="button" class="btn-quiet sidebar-data-btn" @click="open = true">Данные</button>
 
   <div v-if="open" class="modal-backdrop" role="dialog" aria-modal="true">
     <div class="modal">

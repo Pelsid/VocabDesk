@@ -82,8 +82,8 @@ const disabledReason = computed(() => {
 <template>
   <aside class="ai-hint-sidebar panel learn-hint-aside" aria-label="Подсказка ИИ">
     <div class="ai-hint-head">
-      <span class="ai-hint-title">Подсказка ИИ</span>
-      <span class="ai-hint-model muted small">{{ GROQ_MODEL_DEFAULT }}</span>
+      <span class="ai-hint-title">Подсказка</span>
+      <span class="ai-hint-model muted small">Llama 3</span>
     </div>
 
     <button

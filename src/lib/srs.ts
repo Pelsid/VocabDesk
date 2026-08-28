@@ -191,3 +191,22 @@ export function formatDueLabel(sched: CardSchedule | null, now: number): string 
   if (delta < DAY) return `через ${Math.round(delta / MINUTE)} мин`
   return `через ${Math.round(delta / DAY)} д`
 }
+
+function pluralDaysRu(n: number): string {
+  const abs = Math.abs(n) % 100
+  const d = abs % 10
+  if (abs > 10 && abs < 20) return 'дней'
+  if (d === 1) return 'день'
+  if (d >= 2 && d <= 4) return 'дня'
+  return 'дней'
+}
+
+/** Когда карточку оценивали в последний раз (для списков повторения). */
+export function formatLastReviewed(sched: CardSchedule | null, now: number): string {
+  const at = sched?.lastReviewMs
+  if (!at) return 'ещё не повторяли'
+  const delta = now - at
+  if (delta < DAY) return 'Сегодня'
+  const days = Math.max(1, Math.round(delta / DAY))
+  return `${days} ${pluralDaysRu(days)} назад`
+}

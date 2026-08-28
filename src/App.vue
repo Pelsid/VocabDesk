@@ -2,18 +2,33 @@
 import type { Database } from 'sql.js'
 import { computed, onMounted, ref, watch } from 'vue'
 import './App.css'
+import './redesign.css'
 import DictionaryView from './components/DictionaryView.vue'
 import LearnView from './components/LearnView.vue'
 import ProgressBrowseView from './components/ProgressBrowseView.vue'
 import UploadScreen from './components/UploadScreen.vue'
 import DataMenu from './components/DataMenu.vue'
 import GroqUsageBadge from './components/GroqUsageBadge.vue'
+import AppSidebar, { type AppTab } from './components/AppSidebar.vue'
+import ChatView from './components/ChatView.vue'
+import GrammarView from './components/GrammarView.vue'
 import { IDB_KEYS, ensureBackupCacheMigrated, idbGet, idbPut } from './lib/backupIdb'
+import { getStudyStreak } from './lib/dailyLearned'
 import { loadProgress } from './lib/progressStorage'
 import { listCategoryStats, openRewordDatabase } from './db/rewordDb'
 import { useProgressStore } from './stores/progress'
 
-type Tab = 'dictionary' | 'learn' | 'repeat' | 'learned' | 'newWords'
+type Tab = AppTab
+
+const PAGE_TITLE: Record<Tab, string> = {
+  learn: 'Учить',
+  dictionary: 'Словари',
+  repeat: 'Повторение',
+  learned: 'Изученное',
+  newWords: 'Новое',
+  grammar: 'Грамматика',
+  chat: 'Чат с AI',
+}
 
 const progress = useProgressStore()
 
@@ -22,8 +37,10 @@ const backupBuffer = ref<ArrayBuffer | null>(null)
 const busy = ref(false)
 const hydrating = ref(true)
 const err = ref<string | null>(null)
-const tab = ref<Tab>('dictionary')
+const tab = ref<Tab>('learn')
 const selectedCategoryId = ref<string | null>(null)
+const sidebarOpen = ref(false)
+const startWordId = ref<number | null>(null)
 
 onMounted(() => {
   void (async () => {
@@ -54,6 +71,11 @@ watch(db, (d) => {
 
 const categories = computed(() => (db.value ? listCategoryStats(db.value) : []))
 
+const streak = computed(() => {
+  void progress.revision
+  return getStudyStreak()
+})
+
 async function handlePick(file: File) {
   busy.value = true
   err.value = null
@@ -78,6 +100,21 @@ async function replaceBackup(buffer: ArrayBuffer, meta: { name: string }) {
   backupBuffer.value = buffer
   db.value = database
 }
+
+function go(next: Tab) {
+  tab.value = next
+  sidebarOpen.value = false
+}
+
+function onRepeatWord(id: number) {
+  startWordId.value = id
+  tab.value = 'learn'
+  sidebarOpen.value = false
+}
+
+function onConsumedStartWord() {
+  startWordId.value = null
+}
 </script>
 
 <template>
@@ -90,42 +127,61 @@ async function replaceBackup(buffer: ArrayBuffer, meta: { name: string }) {
   <UploadScreen v-else-if="!db" :busy="busy" :error="err" @pick="handlePick" />
 
   <div v-else class="app">
-    <header class="topbar">
-      <nav class="tabs" aria-label="Разделы">
-        <button type="button" :class="{ active: tab === 'dictionary' }" @click="tab = 'dictionary'">Словарь</button>
-        <button type="button" :class="{ active: tab === 'learn' }" @click="tab = 'learn'">Учить</button>
-        <button type="button" :class="{ active: tab === 'repeat' }" @click="tab = 'repeat'">Повторение</button>
-        <button type="button" :class="{ active: tab === 'learned' }" @click="tab = 'learned'">Изученное</button>
-        <button type="button" :class="{ active: tab === 'newWords' }" @click="tab = 'newWords'">Новое</button>
-      </nav>
-      <div class="topbar-right">
+    <AppSidebar :tab="tab" :open="sidebarOpen" :streak="streak" @navigate="go" @close="sidebarOpen = false">
+      <template #usage>
         <GroqUsageBadge />
+      </template>
+      <template #data>
         <DataMenu :db="db" :backup-buffer="backupBuffer" :on-replace-backup="replaceBackup" />
-      </div>
-    </header>
+      </template>
+    </AppSidebar>
 
-    <main class="main">
-      <DictionaryView
-        v-if="tab === 'dictionary'"
-        :db="db"
-        :categories="categories"
-        :selected-id="selectedCategoryId"
-        @select-category="selectedCategoryId = $event"
-      />
-      <LearnView v-else-if="tab === 'learn'" :db="db" :active-category-id="selectedCategoryId" />
-      <ProgressBrowseView
-        v-else-if="tab === 'repeat'"
-        :db="db"
-        mode="due_now"
-        :active-category-id="selectedCategoryId"
-      />
-      <ProgressBrowseView
-        v-else-if="tab === 'learned'"
-        :db="db"
-        mode="learned_review"
-        :active-category-id="selectedCategoryId"
-      />
-      <ProgressBrowseView v-else :db="db" mode="new_words" :active-category-id="selectedCategoryId" />
-    </main>
+    <div class="app-body">
+      <header class="mobile-bar">
+        <button type="button" class="hamburger" aria-label="Открыть меню" @click="sidebarOpen = true">
+          <span /><span /><span />
+        </button>
+        <span class="mobile-bar-title">{{ PAGE_TITLE[tab] }}</span>
+      </header>
+
+      <main class="main">
+        <DictionaryView
+          v-if="tab === 'dictionary'"
+          :db="db"
+          :categories="categories"
+          :selected-id="selectedCategoryId"
+          @select-category="selectedCategoryId = $event"
+        />
+        <LearnView
+          v-else-if="tab === 'learn'"
+          :db="db"
+          :active-category-id="selectedCategoryId"
+          :start-word-id="startWordId"
+          @navigate="go"
+          @consumed-start-word="onConsumedStartWord"
+        />
+        <ProgressBrowseView
+          v-else-if="tab === 'repeat'"
+          :db="db"
+          mode="due_now"
+          :active-category-id="selectedCategoryId"
+          @repeat-word="onRepeatWord"
+        />
+        <ProgressBrowseView
+          v-else-if="tab === 'learned'"
+          :db="db"
+          mode="learned_review"
+          :active-category-id="selectedCategoryId"
+        />
+        <ProgressBrowseView
+          v-else-if="tab === 'newWords'"
+          :db="db"
+          mode="new_words"
+          :active-category-id="selectedCategoryId"
+        />
+        <GrammarView v-else-if="tab === 'grammar'" />
+        <ChatView v-else />
+      </main>
+    </div>
   </div>
 </template>

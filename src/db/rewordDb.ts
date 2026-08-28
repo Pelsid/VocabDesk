@@ -1,14 +1,28 @@
 import initSqlJs, { type Database } from 'sql.js'
-import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url'
+import sqlWasmDataUrl from 'virtual:sql-wasm'
 import type { CategoryScopePrefs } from '../lib/progressTypes'
 
 let cachedFactory: Awaited<ReturnType<typeof initSqlJs>> | null = null
 
+/** data: URL или обычный URL → ArrayBuffer (fetch(file://) для .wasm браузер режет CORS). */
+async function wasmToArrayBuffer(url: string): Promise<ArrayBuffer> {
+  if (url.startsWith('data:')) {
+    const comma = url.indexOf(',')
+    const b64 = comma >= 0 ? url.slice(comma + 1) : url
+    const bin = atob(b64)
+    const bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    return bytes.buffer
+  }
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Не удалось загрузить sql.js wasm: ${res.status}`)
+  return res.arrayBuffer()
+}
+
 async function getSqlFactory() {
   if (!cachedFactory) {
-    cachedFactory = await initSqlJs({
-      locateFile: () => sqlWasmUrl,
-    })
+    const wasmBinary = await wasmToArrayBuffer(sqlWasmDataUrl)
+    cachedFactory = await initSqlJs({ wasmBinary })
   }
   return cachedFactory
 }

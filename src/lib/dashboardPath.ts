@@ -17,6 +17,7 @@ export interface OxfordPathRow {
   id: string
   name: string
   wordCount: number
+  learnedCount: number
   localPct: number
 }
 
@@ -36,7 +37,14 @@ export function computeOxfordPathRows(
       return acc + (isReviewStageForDictionaryPct(sched, mastered) ? 1 : 0)
     }, 0)
     const localPct = ids.length ? Math.round((learnedLocal / ids.length) * 100) : 0
-    rows.push({ id, name: c.name, wordCount: ids.length, localPct })
+    rows.push({ id, name: c.name, wordCount: ids.length, learnedCount: learnedLocal, localPct })
   }
   return rows
+}
+
+export function pctTone(pct: number): 'ok' | 'teal' | 'accent' | 'warn' {
+  if (pct >= 70) return 'ok'
+  if (pct >= 50) return 'teal'
+  if (pct >= 35) return 'accent'
+  return 'warn'
 }

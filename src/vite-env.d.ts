@@ -5,3 +5,8 @@ declare module '*.vue' {
   const component: DefineComponent<object, object, unknown>
   export default component
 }
+
+declare module 'virtual:sql-wasm' {
+  const dataUrl: string
+  export default dataUrl
+}

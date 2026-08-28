@@ -257,7 +257,10 @@ function resetModeUi(m: StudyInteractionMode) {
     <div class="study-layout">
       <div class="study-session-card panel">
         <header class="study-session-card-head">
-          <span class="study-session-kind">{{ cardTitle }}</span>
+          <div>
+            <span class="study-session-kind">Переведите слово</span>
+            <div class="muted small">{{ cardTitle }}</div>
+          </div>
           <div class="study-session-card-meta">
             <StudyBadge :schedule="schedule" :now="Date.now()" />
             <span class="muted small due-pill">{{ scheduleTitle }}</span>

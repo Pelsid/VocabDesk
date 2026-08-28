@@ -8,6 +8,7 @@ import WordListPanel from './WordListPanel.vue'
 import { useProgressStore } from '../stores/progress'
 import { getSchedule, isReviewStageForDictionaryPct, isWordMastered } from '../study/localClassifier'
 import { getCategoryGlyph } from '../lib/categoryIcons'
+import { pctTone } from '../lib/dashboardPath'
 import { storeToRefs } from 'pinia'
 
 const props = defineProps<{
@@ -51,7 +52,9 @@ const enrichedCats = computed(() => {
     )
     const localPct = ids.length ? Math.round((learnedLocal / ids.length) * 100) : 0
     const backupPct = c.wordCount ? Math.round((c.learnedCount / c.wordCount) * 100) : 0
-    return { c, localPct, backupPct }
+    const inCustom = customIds.value.includes(c.id)
+    const training = scopeMode.value === 'custom' ? inCustom : c.isSelected
+    return { c, localPct, backupPct, training }
   })
 })
 
@@ -59,6 +62,8 @@ const globalHits = computed(() => {
   if (globalQ.value.trim().length < 2) return []
   return globalSearchWords(props.db, globalQ.value, 60)
 })
+
+const selectedCat = computed(() => props.categories.find((x) => x.id === props.selectedId) ?? null)
 
 function onCustomToggle(catId: string, on: boolean) {
   const set = new Set(customIds.value)
@@ -76,107 +81,119 @@ function activateCustomMode() {
       customIds.value.length > 0 ? customIds.value : initial.length > 0 ? initial : props.categories.slice(0, 8).map((x) => x.id),
   })
 }
+
+function onStatusClick(catId: string, currentlyTraining: boolean) {
+  if (scopeMode.value !== 'custom') return
+  onCustomToggle(catId, !currentlyTraining)
+}
 </script>
 
 <template>
   <div class="dictionary">
-    <div class="toolbar">
-      <div class="field">
-        <span class="field-label">Поиск</span>
-        <input v-model="globalQ" placeholder="Категория или слово (от 2 букв для слов)" />
-      </div>
-      <label class="toggle">
-        <input v-model="onlySelectedCats" type="checkbox" />
-        Только активные словари из файла экспорта
-      </label>
+    <template v-if="selectedId && selectedCat">
+      <button type="button" class="btn-quiet dict-back" @click="emit('selectCategory', null)">← К словарям</button>
+      <WordListPanel
+        :db="db"
+        :category-id="selectedId"
+        :category-name="selectedCat.name"
+        :category-glyph="getCategoryGlyph(selectedId, selectedCat.customIcon)"
+      />
+    </template>
 
-      <div class="field dictionary-scope-toolbar">
-        <span class="field-label">Область «Все выбранные» во вкладке «Учить»</span>
-        <div class="learn-scope-switch dict-scope-switch">
+    <template v-else>
+      <header class="page-head">
+        <div>
+          <h1>Словари</h1>
+          <p class="page-sub">Наборы слов из вашего бэкапа и прогресс по локальному SRS</p>
+        </div>
+        <div class="page-head-aside">
           <button
             type="button"
-            :class="{ active: scopeMode === 'reword' }"
+            :class="scopeMode === 'reword' ? 'btn-primary' : 'btn-quiet'"
             @click="progress.updatePrefs({ categoryScopeMode: 'reword' })"
           >
             Как в Reword
           </button>
-          <button type="button" :class="{ active: scopeMode === 'custom' }" @click="activateCustomMode">Свой набор</button>
-        </div>
-        <div v-if="scopeMode === 'custom'" class="dict-scope-extra muted small">
           <button
             type="button"
-            class="btn-quiet dict-scope-sync"
-            @click="progress.updatePrefs({ customCategoryIds: categories.filter((x) => x.isSelected).map((x) => x.id) })"
+            :class="scopeMode === 'custom' ? 'btn-primary' : 'btn-quiet'"
+            @click="activateCustomMode"
           >
-            Подставить «в обучении» из Reword
+            Свой набор
           </button>
-          <span> Отметьте наборы галочкой на карточках.</span>
         </div>
-      </div>
-    </div>
+      </header>
 
-    <section v-if="globalQ.trim().length >= 2" class="section dictionary-global-hits">
-      <div class="section-head">
-        <h2>Слова по запросу</h2>
-        <span class="muted small">{{ globalHits.length }} совпадений (лимит 60)</span>
-      </div>
-      <div class="hits">
-        <div v-for="w in globalHits" :key="w.id" class="hit">
-          <span class="hit-word">{{ w.word }}</span>
-          <span class="muted">{{ w.rus ?? '—' }}</span>
-          <StudyBadge
-            :schedule="getSchedule(snapshot.words, w.id)"
-            :now="Date.now()"
-            :mastered="isWordMastered(snapshot.mastered, w.id)"
-          />
+      <div class="dict-toolbar">
+        <div class="field">
+          <span class="field-label">Поиск</span>
+          <input v-model="globalQ" placeholder="Поиск по словарям…" />
         </div>
+        <label class="toggle">
+          <input v-model="onlySelectedCats" type="checkbox" />
+          Только активные
+        </label>
+        <span class="muted small dict-count">{{ enrichedCats.length }} наборов</span>
       </div>
-    </section>
 
-    <div :class="selectedId ? 'dictionary-columns' : 'dictionary-columns dictionary-columns-single'">
-      <section class="section dictionary-cats-pane">
+      <p v-if="scopeMode === 'custom'" class="muted small browse-hint">
+        В режиме своего набора кнопка «В обучении» включает словарь в смешанную очередь «Учить».
+        <button
+          type="button"
+          class="btn-quiet dict-scope-sync"
+          @click="progress.updatePrefs({ customCategoryIds: categories.filter((x) => x.isSelected).map((x) => x.id) })"
+        >
+          Подставить «в обучении» из Reword
+        </button>
+      </p>
+
+      <section v-if="globalQ.trim().length >= 2" class="section dictionary-global-hits">
         <div class="section-head">
-          <h2>Словари</h2>
-          <span class="muted small">{{ enrichedCats.length }} наборов</span>
+          <h2>Слова по запросу</h2>
+          <span class="muted small">{{ globalHits.length }} совпадений (лимит 60)</span>
         </div>
-        <div class="cat-grid">
-          <div v-for="{ c, localPct, backupPct } in enrichedCats" :key="c.id" :class="['cat-card', selectedId === c.id ? 'active' : '']">
-            <button type="button" class="cat-card-main" @click="emit('selectCategory', c.id)">
-              <div class="cat-top">
-                <span class="cat-icon" aria-hidden title="Иконка словаря">
-                  {{ getCategoryGlyph(c.id, c.customIcon) }}
-                </span>
-                <div class="cat-name-block">
-                  <div class="cat-name">{{ c.name }}</div>
-                </div>
-                <div :class="['pct', c.isSelected ? 'on' : 'off']" title="Словарь помечен как активный для обучения в приложении экспорта">
-                  {{ c.isSelected ? 'в обучении' : 'архив' }}
-                </div>
-              </div>
-              <div class="cat-meta muted small">
-                {{ c.wordCount }} слов · здесь после изучения (аналог Q≥3): {{ localPct }}% · в файле .backup (Q≥3):
-                {{ backupPct }}%
-              </div>
-              <div class="progress">
-                <div class="progress-bar local" :style="{ width: `${localPct}%` }" />
-              </div>
-            </button>
-            <label v-if="scopeMode === 'custom'" class="cat-custom-scope">
-              <input type="checkbox" :checked="customIds.includes(c.id)" @change="onCustomToggle(c.id, ($event.target as HTMLInputElement).checked)" />
-              <span>В смешанном наборе</span>
-            </label>
+        <div class="hits">
+          <div v-for="w in globalHits" :key="w.id" class="hit">
+            <span class="hit-word">{{ w.word }}</span>
+            <span class="muted">{{ w.rus ?? '—' }}</span>
+            <StudyBadge
+              :schedule="getSchedule(snapshot.words, w.id)"
+              :now="Date.now()"
+              :mastered="isWordMastered(snapshot.mastered, w.id)"
+            />
           </div>
         </div>
       </section>
 
-      <div v-if="selectedId" class="dictionary-words-pane">
-        <WordListPanel
-          :db="db"
-          :category-id="selectedId"
-          :category-name="categories.find((x) => x.id === selectedId)?.name ?? ''"
-          :category-glyph="getCategoryGlyph(selectedId, categories.find((x) => x.id === selectedId)?.customIcon ?? null)"
-        />
+      <div class="dict-card-grid">
+        <div v-for="{ c, localPct, training } in enrichedCats" :key="c.id" class="dict-card">
+          <button type="button" class="dict-card-main" @click="emit('selectCategory', c.id)">
+            <div class="dict-card-name">{{ getCategoryGlyph(c.id, c.customIcon) }} {{ c.name }}</div>
+            <div class="dict-card-meta muted small">{{ c.wordCount.toLocaleString('ru-RU') }} слов</div>
+            <div class="dict-card-pctrow" :class="`tone-${pctTone(localPct)}`">{{ localPct }}%</div>
+            <div class="progress thin">
+              <div class="progress-bar" :class="`tone-${pctTone(localPct)}`" :style="{ width: `${localPct}%` }" />
+            </div>
+          </button>
+          <button
+            type="button"
+            class="dict-status"
+            :class="{ on: training, clickable: scopeMode === 'custom' }"
+            :title="
+              scopeMode === 'custom'
+                ? 'Включить или выключить набор в смешанной очереди'
+                : 'Флаг из файла экспорта Reword'
+            "
+            @click.stop="onStatusClick(c.id, training)"
+          >
+            {{ training ? 'В обучении' : 'Архив' }}
+          </button>
+        </div>
       </div>
-    </div>
+
+      <button v-if="onlySelectedCats" type="button" class="show-all-link" @click="onlySelectedCats = false">
+        Показать все словари
+      </button>
+    </template>
   </div>
 </template>

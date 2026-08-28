@@ -1,22 +1,27 @@
 :root {
   color-scheme: dark;
-  --bg: #0c121a;
-  --surface: #121a24;
-  --elevated: #172231;
-  --border: #273445;
-  --text: #e7eef8;
-  --muted: #93a4bd;
-  --accent: #3b82f6;
-  --accent2: #2563eb;
-  --danger: #fb7185;
+  --bg: #0b0b15;
+  --surface: #161625;
+  --elevated: #1c1c2e;
+  --border: #2a2a42;
+  --text: #f4f4fb;
+  --muted: #9aa0b8;
+  --accent: #8b5cf6;
+  --accent2: #7c3aed;
+  --accent-glow: rgba(139, 92, 246, 0.42);
+  --danger: #f87171;
   --ok: #34d399;
-  --warn: #fbbf24;
-  --shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
-  --radius: 14px;
-  --sans: system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+  --teal: #2dd4bf;
+  --warn: #f59e0b;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --radius: 16px;
+  --sidebar-w: 232px;
+  --sans: Inter, system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
   font-family: var(--sans);
-  background: radial-gradient(1200px 700px at 20% 0%, rgba(59, 130, 246, 0.14), transparent 55%),
-    radial-gradient(900px 600px at 90% 10%, rgba(52, 211, 153, 0.08), transparent 55%), var(--bg);
+  background:
+    radial-gradient(1100px 640px at 12% -10%, rgba(139, 92, 246, 0.18), transparent 55%),
+    radial-gradient(900px 520px at 92% 0%, rgba(45, 212, 191, 0.08), transparent 50%),
+    var(--bg);
   color: var(--text);
 }
 
@@ -25,9 +30,7 @@ body {
 }
 
 .app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  min-height: 100dvh;
 }
 
 .topbar {
@@ -934,6 +937,7 @@ body {
     color-mix(in srgb, var(--accent) 88%, transparent),
     color-mix(in srgb, var(--accent2) 95%, transparent)
   );
+  box-shadow: 0 0 12px var(--accent-glow);
   transition: width 0.25s ease;
 }
 
