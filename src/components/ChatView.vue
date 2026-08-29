@@ -9,6 +9,7 @@ import {
   titleFromFirstMessage,
   type ChatThread,
 } from '../lib/groqChat'
+import { useGroqApiKey } from '../lib/groqApiKey'
 
 const TOPICS = [
   { label: 'Путешествие по Европе', prompt: "Let's talk about travelling in Europe. Ask me where I'd like to go first." },
@@ -17,8 +18,7 @@ const TOPICS = [
   { label: 'Еда и ресторан', prompt: "Let's role-play ordering food at a restaurant. You are the waiter." },
 ]
 
-const apiKey = (import.meta.env.VITE_GROQ_API_KEY as string | undefined)?.trim() ?? ''
-const hasKey = Boolean(apiKey)
+const { apiKey, hasKey } = useGroqApiKey()
 
 const threads = ref<ChatThread[]>(loadChatThreads())
 const activeId = ref<string | null>(threads.value[0]?.id ?? null)
@@ -75,7 +75,7 @@ function formatTime(at: number): string {
 
 async function sendText(text: string) {
   const content = text.trim()
-  if (!content || sending.value || !hasKey) return
+  if (!content || sending.value || !hasKey.value) return
   err.value = null
   const thread = ensureThread()
   const now = Date.now()
@@ -94,7 +94,7 @@ async function sendText(text: string) {
   try {
     const history = thread.messages.filter((m) => m !== assistant)
     const full = await streamGroqChat({
-      apiKey,
+      apiKey: apiKey.value,
       history,
       signal: abort.signal,
       onDelta(chunk) {
@@ -166,8 +166,8 @@ onUnmounted(() => abort?.abort())
     <div v-if="!hasKey" class="chat-empty panel">
       <p class="learn-empty-title">Нет ключа Groq</p>
       <p class="muted small">
-        Добавьте <code>VITE_GROQ_API_KEY</code> в <code>.env.local</code> и перезапустите dev-сервер — тот же ключ, что и
-        для подсказок в сессии.
+        Вставьте ключ Groq в окне «Данные» (кнопка внизу меню) и нажмите «Сохранить ключ» — он останется в localStorage
+        после закрытия сайта.
       </p>
     </div>
 

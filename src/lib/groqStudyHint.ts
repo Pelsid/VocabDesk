@@ -1,8 +1,8 @@
-/** Вызов Groq (OpenAI-compatible) для подсказок при изучении слов. Ключ задавайте в `.env.local`: VITE_GROQ_API_KEY */
+/** Вызов Groq (OpenAI-compatible) для подсказок при изучении слов. Ключ — в окне «Данные» (localStorage) или VITE_GROQ_API_KEY. */
 
 import { recordGroqRequest } from './groqUsageTracker'
 
-export const GROQ_MODEL_DEFAULT = 'llama-3.3-70b-versatile'
+export const GROQ_MODEL_DEFAULT = 'openai/gpt-oss-120b'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 

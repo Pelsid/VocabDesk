@@ -5,6 +5,7 @@ import {
   GROQ_MODEL_DEFAULT,
   type StudyHintPayload,
 } from '../lib/groqStudyHint'
+import { useGroqApiKey } from '../lib/groqApiKey'
 
 type StudyInteractionMode = 'type' | 'reveal' | 'choice' | 'cloze'
 
@@ -21,8 +22,7 @@ function pixabaySearchUrl(query: string): string {
   return `https://pixabay.com/images/search/${encodeURIComponent(q)}/`
 }
 
-const apiKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined
-const hasKey = computed(() => Boolean(apiKey?.trim()))
+const { apiKey, hasKey } = useGroqApiKey()
 const online = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
 
 function upOnline() {
@@ -49,7 +49,7 @@ onUnmounted(() => {
 })
 
 async function load() {
-  const key = apiKey?.trim()
+  const key = apiKey.value.trim()
   if (!key) return
   loading.value = true
   err.value = null
@@ -73,7 +73,7 @@ async function load() {
 const disabled = computed(() => !hasKey.value || !online.value || loading.value)
 
 const disabledReason = computed(() => {
-  if (!hasKey.value) return 'Добавьте VITE_GROQ_API_KEY в .env.local и перезапустите dev-сервер.'
+  if (!hasKey.value) return 'Вставьте ключ Groq в окне «Данные» (кнопка внизу меню).'
   if (!online.value) return 'Нет сети — подсказка недоступна.'
   return ''
 })

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Database } from 'sql.js'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { openRewordDatabase } from '../db/rewordDb'
 import { exportDatabaseWithSchedules } from '../lib/rewordSchedule'
 import type { ImportMode } from '../lib/progressTypes'
@@ -9,6 +9,7 @@ import { buildWeakWordsExportText } from '../lib/exportWeakWords'
 import { idbClearAll } from '../lib/backupIdb'
 import { useProgressStore } from '../stores/progress'
 import { storeToRefs } from 'pinia'
+import { clearGroqApiKey, getStoredGroqApiKey, setGroqApiKey } from '../lib/groqApiKey'
 
 function yyyyMmDd() {
   const d = new Date()
@@ -39,6 +40,33 @@ const { snapshot } = storeToRefs(progress)
 
 const open = ref(false)
 const status = ref<string | null>(null)
+const groqKeyDraft = ref(getStoredGroqApiKey())
+const showGroqKey = ref(false)
+const groqKeySaved = ref(Boolean(getStoredGroqApiKey()))
+
+watch(open, (isOpen) => {
+  if (!isOpen) return
+  groqKeyDraft.value = getStoredGroqApiKey()
+  groqKeySaved.value = Boolean(groqKeyDraft.value)
+  showGroqKey.value = false
+})
+
+function saveGroqKey() {
+  const next = groqKeyDraft.value.trim()
+  groqKeyDraft.value = next
+  setGroqApiKey(next)
+  groqKeySaved.value = Boolean(next)
+  status.value = next ? 'Ключ Groq сохранён в localStorage.' : 'Ключ Groq удалён.'
+}
+
+function removeGroqKey() {
+  groqKeyDraft.value = ''
+  showGroqKey.value = false
+  clearGroqApiKey()
+  groqKeySaved.value = false
+  status.value = 'Ключ Groq удалён.'
+}
+
 const importProgressInputRef = ref<HTMLInputElement | null>(null)
 const replaceDbInputRef = ref<HTMLInputElement | null>(null)
 
@@ -129,19 +157,44 @@ function resetProgressOnly() {
 <template>
   <button type="button" class="btn-quiet sidebar-data-btn" @click="open = true">Данные</button>
 
-  <div v-if="open" class="modal-backdrop" role="dialog" aria-modal="true">
-    <div class="modal">
-      <div class="modal-head">
-        <div>
-          <div class="modal-title">Данные и синхронизация</div>
-          <div class="muted small">
-            Прогресс обучения хранится в localStorage. Файл бэкапа кэшируется в IndexedDB (из‑за размера).
+  <Teleport to="body">
+    <div v-if="open" class="modal-backdrop" role="dialog" aria-modal="true">
+      <div class="modal">
+        <div class="modal-head">
+          <div>
+            <div class="modal-title">Данные и синхронизация</div>
+            <div class="muted small">
+              Прогресс обучения хранится в localStorage. Файл бэкапа кэшируется в IndexedDB (из‑за размера).
+            </div>
           </div>
+          <button type="button" class="btn-quiet" @click="open = false">Закрыть</button>
         </div>
-        <button type="button" class="btn-quiet" @click="open = false">Закрыть</button>
-      </div>
 
       <div class="modal-body">
+        <section class="modal-section">
+          <h3>Ключ Groq API</h3>
+          <p class="muted small">
+            Для чата и подсказок ИИ. Хранится в localStorage этого браузера и не сбрасывается при закрытии сайта или
+            сбросе прогресса.
+          </p>
+          <input
+            v-model="groqKeyDraft"
+            :type="showGroqKey ? 'text' : 'password'"
+            class="select"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="gsk_…"
+            @keydown.enter.prevent="saveGroqKey"
+          />
+          <div class="row-btns">
+            <button type="button" class="btn-primary" @click="saveGroqKey">Сохранить ключ</button>
+            <button type="button" class="btn-quiet" @click="showGroqKey = !showGroqKey">
+              {{ showGroqKey ? 'Скрыть' : 'Показать' }}
+            </button>
+            <button v-if="groqKeySaved" type="button" class="btn-quiet" @click="removeGroqKey">Удалить ключ</button>
+          </div>
+        </section>
+
         <section class="modal-section">
           <h3>Импорт прогресса из файла .backup</h3>
           <p class="muted small">
@@ -205,5 +258,6 @@ function resetProgressOnly() {
         <div v-if="status" class="modal-status">{{ status }}</div>
       </div>
     </div>
-  </div>
+    </div>
+  </Teleport>
 </template>

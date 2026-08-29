@@ -12,6 +12,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 0;
 }
 
 .sidebar-backdrop {
@@ -31,6 +33,7 @@
   position: sticky;
   top: 0;
   max-height: 100dvh;
+  z-index: 1;
 }
 
 .sidebar-brand {

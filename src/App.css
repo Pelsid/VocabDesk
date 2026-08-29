@@ -1809,11 +1809,15 @@ body {
   display: grid;
   place-items: center;
   padding: 18px;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .modal {
   width: min(880px, 100%);
+  max-height: min(92vh, 920px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border-radius: 18px;
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 94%, black);
@@ -1838,6 +1842,7 @@ body {
   padding: 16px;
   display: grid;
   gap: 14px;
+  overflow-y: auto;
 }
 
 .modal-section h3 {

@@ -10,11 +10,11 @@ export const GROQ_USAGE_EVENT = 'vocabdesk-groq-usage'
 /** Лимиты по таблице Groq для частых моделей (RPM / RPD). Неизвестная модель — осторожный дефолт. */
 export function getGroqLimitsForModel(model: string): { rpm: number; rpd: number } {
   const m = [
-    ['llama-3.3-70b-versatile', { rpm: 30, rpd: 1000 }],
-    ['llama-3.1-8b-instant', { rpm: 30, rpd: 14400 }],
-    ['meta-llama/llama-4-scout-17b-16e-instruct', { rpm: 30, rpd: 1000 }],
     ['openai/gpt-oss-120b', { rpm: 30, rpd: 1000 }],
+    ['openai/gpt-oss-20b', { rpm: 30, rpd: 1000 }],
+    ['qwen/qwen3.6-27b', { rpm: 30, rpd: 1000 }],
     ['qwen/qwen3-32b', { rpm: 60, rpd: 1000 }],
+    ['meta-llama/llama-4-scout-17b-16e-instruct', { rpm: 30, rpd: 1000 }],
     ['groq/compound', { rpm: 30, rpd: 250 }],
     ['whisper-large-v3', { rpm: 20, rpd: 2000 }],
   ] as const

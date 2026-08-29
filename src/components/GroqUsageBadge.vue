@@ -2,8 +2,9 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { GROQ_MODEL_DEFAULT } from '../lib/groqStudyHint'
 import { GROQ_USAGE_EVENT, getGroqLimitsForModel, getGroqUsageSnapshot } from '../lib/groqUsageTracker'
+import { useGroqApiKey } from '../lib/groqApiKey'
 
-const hasKey = Boolean((import.meta.env.VITE_GROQ_API_KEY as string | undefined)?.trim())
+const { hasKey } = useGroqApiKey()
 const limits = getGroqLimitsForModel(GROQ_MODEL_DEFAULT)
 const snapshot = ref(getGroqUsageSnapshot(Date.now()))
 
