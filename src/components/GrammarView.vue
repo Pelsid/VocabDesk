@@ -10,12 +10,30 @@ import {
   toggleGrammarLessonDone,
 } from '../lib/grammarProgress'
 
+import { lemmasRelatedToLesson } from '../lib/grammarLinks'
+
+const props = defineProps<{
+  startLessonId?: string | null
+}>()
+
+const emit = defineEmits<{ consumedStartLesson: [] }>()
+
 type LevelFilter = CefrLevel | 'all'
 
 const level = ref<LevelFilter>('all')
 const query = ref('')
 const selectedId = ref<string | null>(loadSelectedGrammarLessonId())
 const done = ref<Set<string>>(loadGrammarDone())
+
+watch(
+  () => props.startLessonId,
+  (id) => {
+    if (!id) return
+    selectedId.value = id
+    emit('consumedStartLesson')
+  },
+  { immediate: true },
+)
 
 const filtered = computed(() => searchLessons(query.value, level.value))
 
@@ -33,6 +51,8 @@ const seeAlsoLessons = computed(() => {
   if (!lesson) return []
   return lesson.seeAlso.map((id) => getLesson(id)).filter((x): x is GrammarLesson => x != null)
 })
+
+const relatedLemmas = computed(() => (selected.value ? lemmasRelatedToLesson(selected.value.id) : []))
 
 watch(selectedId, (id) => {
   saveSelectedGrammarLessonId(id)
@@ -153,6 +173,14 @@ function isDone(id: string): boolean {
         <ul class="grammar-rules grammar-pitfalls">
           <li v-for="(p, i) in selected.pitfalls" :key="i">{{ p }}</li>
         </ul>
+      </section>
+
+      <section v-if="relatedLemmas.length > 0" class="grammar-block">
+        <h3 class="grammar-h">В словаре рядом</h3>
+        <p class="muted small">Эти слова часто встречаются вместе с темой — найдите их поиском в «Словаре».</p>
+        <div class="chip-row">
+          <span v-for="w in relatedLemmas" :key="w" class="chip">{{ w }}</span>
+        </div>
       </section>
 
       <section v-if="seeAlsoLessons.length > 0" class="grammar-block">

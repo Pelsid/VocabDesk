@@ -1,15 +1,11 @@
-import type { Database } from 'sql.js'
-import { fetchWordsByIds } from '../db/rewordDb'
-import type { ProgressSnapshot } from '../lib/progressTypes'
+import type { WordRow } from './catalogTypes'
+import type { ProgressSnapshot } from './progressTypes'
 
 /** Текстовый список слов из журнала «Снова» / «Сложно» для разбора вне приложения. */
-export function buildWeakWordsExportText(db: Database, snapshot: ProgressSnapshot): string {
+export function buildWeakWordsExportText(rows: WordRow[], snapshot: ProgressSnapshot): string {
   const log = snapshot.weakWordLog ?? []
   if (!log.length) return ''
 
-  const idsOrdered = log.map((e) => e.id)
-  const uniq = [...new Set(idsOrdered)]
-  const rows = fetchWordsByIds(db, uniq)
   const byId = new Map(rows.map((w) => [w.id, w]))
 
   const lines: string[] = [

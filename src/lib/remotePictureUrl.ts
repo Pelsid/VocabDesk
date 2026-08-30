@@ -1,4 +1,4 @@
-import type { WordRow } from '../db/rewordDb'
+import type { WordRow } from './catalogTypes'
 
 export const REMOTE_PICTURE_MAX = 3
 

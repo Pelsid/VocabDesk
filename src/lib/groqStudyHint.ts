@@ -4,8 +4,6 @@ import { recordGroqRequest } from './groqUsageTracker'
 
 export const GROQ_MODEL_DEFAULT = 'openai/gpt-oss-120b'
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-
 export interface StudyHintPayload {
   gist_ru: string
   collocations_en: string[]
@@ -17,7 +15,6 @@ export interface StudyHintPayload {
 }
 
 export interface FetchStudyHintInput {
-  apiKey: string
   model?: string
   lemma: string
   ipa: string | null
@@ -83,21 +80,18 @@ export async function fetchStudyHintFromGroq(input: FetchStudyHintInput): Promis
   const model = input.model ?? GROQ_MODEL_DEFAULT
   const user = buildUserContent(input)
 
-  const res = await fetch(GROQ_URL, {
+  const res = await fetch('/api/groq.php', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${input.apiKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      mode: 'hint',
       model,
-      temperature: 0.35,
-      max_tokens: 900,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SYSTEM },
-        { role: 'user', content: user },
-      ],
+      payload: {
+        messages: [
+          { role: 'system', content: SYSTEM },
+          { role: 'user', content: user },
+        ],
+      },
     }),
   })
 

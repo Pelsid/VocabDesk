@@ -17,12 +17,14 @@ const props = defineProps<{
   exampleEnglishLines: string[]
 }>()
 
+const emit = defineEmits<{ close: [] }>()
+
 function pixabaySearchUrl(query: string): string {
   const q = query.trim() || 'english'
   return `https://pixabay.com/images/search/${encodeURIComponent(q)}/`
 }
 
-const { apiKey, hasKey } = useGroqApiKey()
+const { hasKey } = useGroqApiKey()
 const online = ref(typeof navigator === 'undefined' ? true : navigator.onLine)
 
 function upOnline() {
@@ -42,6 +44,7 @@ watch([() => props.wordId, () => props.mode], () => {
 onMounted(() => {
   window.addEventListener('online', upOnline)
   window.addEventListener('offline', upOnline)
+  if (hasKey.value && online.value) void load()
 })
 onUnmounted(() => {
   window.removeEventListener('online', upOnline)
@@ -49,13 +52,11 @@ onUnmounted(() => {
 })
 
 async function load() {
-  const key = apiKey.value.trim()
-  if (!key) return
+  if (!hasKey.value) return
   loading.value = true
   err.value = null
   try {
     hint.value = await fetchStudyHintFromGroq({
-      apiKey: key,
       model: GROQ_MODEL_DEFAULT,
       lemma: props.lemma,
       ipa: props.ipa,
@@ -84,6 +85,9 @@ const disabledReason = computed(() => {
     <div class="ai-hint-head">
       <span class="ai-hint-title">Подсказка</span>
       <span class="ai-hint-model muted small">Llama 3</span>
+      <button type="button" class="btn-quiet ai-hint-close" aria-label="Скрыть подсказку" @click="emit('close')">
+        Закрыть
+      </button>
     </div>
 
     <button

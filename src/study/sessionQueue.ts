@@ -1,6 +1,4 @@
-import type { Database } from 'sql.js'
 import type { ProgressSnapshot } from '../lib/progressTypes'
-import { listWordIdsInScope } from '../db/rewordDb'
 
 function shuffleInPlace<T>(a: T[]) {
   for (let i = a.length - 1; i > 0; i--) {
@@ -12,21 +10,9 @@ function shuffleInPlace<T>(a: T[]) {
 }
 
 /** Формирует очередь ID на сессию: сначала просроченные review/relearn/learning, затем новые */
-export function buildSessionQueue(args: {
-  db: Database
-  scope: 'selected' | 'category'
-  categoryId: string | null
-  snapshot: ProgressSnapshot
-  now: number
-}): number[] {
+export function buildSessionQueue(args: { ids: number[]; snapshot: ProgressSnapshot; now: number }): number[] {
   const mastered = args.snapshot.mastered ?? {}
-  const scopePrefs = {
-    categoryScopeMode: args.snapshot.prefs.categoryScopeMode,
-    customCategoryIds: args.snapshot.prefs.customCategoryIds ?? [],
-  }
-  const ids = listWordIdsInScope(args.db, args.scope, args.categoryId, scopePrefs).filter(
-    (id) => !mastered[String(id)],
-  )
+  const ids = args.ids.filter((id) => !mastered[String(id)])
   const prefs = args.snapshot.prefs
   const words = args.snapshot.words
 
@@ -38,7 +24,7 @@ export function buildSessionQueue(args: {
   const learningDue = items.filter((i) => i.sched?.bucket === 'learning' && i.sched.due <= args.now)
   const news = items.filter((i) => !i.sched || i.sched.bucket === 'new')
 
-  reviewDue.sort((a, b) => (a.sched!.due - b.sched!.due))
+  reviewDue.sort((a, b) => a.sched!.due - b.sched!.due)
   const intraday = [...relearnDue, ...learningDue].sort((a, b) => a.sched!.due - b.sched!.due)
 
   const pickRev = reviewDue.slice(0, prefs.reviewPerSession).map((x) => x.id)
@@ -52,21 +38,9 @@ export function buildSessionQueue(args: {
   return [...pickRev, ...pickIntra, ...pickNew]
 }
 
-export function countDueSnapshot(args: {
-  db: Database
-  scope: 'selected' | 'category'
-  categoryId: string | null
-  snapshot: ProgressSnapshot
-  now: number
-}) {
+export function countDueSnapshot(args: { ids: number[]; snapshot: ProgressSnapshot; now: number }) {
   const mastered = args.snapshot.mastered ?? {}
-  const scopePrefs = {
-    categoryScopeMode: args.snapshot.prefs.categoryScopeMode,
-    customCategoryIds: args.snapshot.prefs.customCategoryIds ?? [],
-  }
-  const ids = listWordIdsInScope(args.db, args.scope, args.categoryId, scopePrefs).filter(
-    (id) => !mastered[String(id)],
-  )
+  const ids = args.ids.filter((id) => !mastered[String(id)])
   const words = args.snapshot.words
   let due = 0
   let fresh = 0
@@ -82,9 +56,7 @@ export function countDueSnapshot(args: {
       if (s.due <= args.now) due++
       continue
     }
-    if (s.bucket === 'review') {
-      if (s.due <= args.now) due++
-    }
+    if (s.bucket === 'review' && s.due <= args.now) due++
   }
   return { total: ids.length, due, fresh, learning }
 }

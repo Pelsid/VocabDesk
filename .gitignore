@@ -22,6 +22,14 @@ PRODUCT_IDEAS.private.md
 .env
 .env.*
 !.env.example
+api/config.local.php
+
+# OSPanel — локальные настройки домена и движков
+.osp/
+
+# Локальный дамп Reword (импорт в CoreWords)
+data/*.backup
+data/*.json
 
 # Vite / bundler caches (если уедут из node_modules — не попадают в git)
 .vite

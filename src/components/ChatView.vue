@@ -18,7 +18,7 @@ const TOPICS = [
   { label: 'Еда и ресторан', prompt: "Let's role-play ordering food at a restaurant. You are the waiter." },
 ]
 
-const { apiKey, hasKey } = useGroqApiKey()
+const { hasKey } = useGroqApiKey()
 
 const threads = ref<ChatThread[]>(loadChatThreads())
 const activeId = ref<string | null>(threads.value[0]?.id ?? null)
@@ -94,7 +94,6 @@ async function sendText(text: string) {
   try {
     const history = thread.messages.filter((m) => m !== assistant)
     const full = await streamGroqChat({
-      apiKey: apiKey.value,
       history,
       signal: abort.signal,
       onDelta(chunk) {
@@ -139,7 +138,7 @@ onUnmounted(() => abort?.abort())
     <header class="page-head">
       <div>
         <h1>Чат с AI</h1>
-        <p class="page-sub">Практикуйте английский в диалоге</p>
+        <p class="page-sub">Необязательная практика — карточки работают и без ключа</p>
       </div>
       <div class="page-head-aside">
         <GroqUsageBadge />
@@ -164,10 +163,10 @@ onUnmounted(() => abort?.abort())
     </div>
 
     <div v-if="!hasKey" class="chat-empty panel">
-      <p class="learn-empty-title">Нет ключа Groq</p>
+      <p class="learn-empty-title">AI-диалоги необязательны</p>
       <p class="muted small">
-        Вставьте ключ Groq в окне «Данные» (кнопка внизу меню) и нажмите «Сохранить ключ» — он останется в localStorage
-        после закрытия сайта.
+        Это практика разговора, не ядро VocabDesk. Карточки и повторение работают без ключа. Чтобы включить чат,
+        откройте «Данные» внизу меню и вставьте ключ Groq.
       </p>
     </div>
 
@@ -180,7 +179,9 @@ onUnmounted(() => abort?.abort())
 
       <div ref="threadEl" class="chat-thread" aria-live="polite">
         <div v-if="!active || active.messages.length === 0" class="chat-empty">
-          <p class="muted">Выберите тему или напишите сообщение — ассистент поддержит диалог на английском.</p>
+          <p class="learn-empty-title">AI-диалоги — необязательная практика</p>
+          <p class="muted">Выберите тему или напишите что-нибудь по-английски. Например:</p>
+          <p class="chat-onboard-example">I want to practise ordering coffee in a café.</p>
         </div>
         <div v-for="(m, i) in active?.messages ?? []" :key="`${m.at}-${i}`" class="chat-row" :class="m.role">
           <span v-if="m.role === 'assistant'" class="chat-avatar" aria-hidden>✦</span>

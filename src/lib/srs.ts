@@ -183,6 +183,24 @@ function gradeMature(s: CardSchedule, grade: Grade, now: number, prefs: UserPref
   return graduateReview(now, ease, interval, s.reps)
 }
 
+export function previewNextIntervals(
+  prev: CardSchedule | null,
+  now: number,
+  prefs: UserPrefs,
+): Record<Grade, string> {
+  const grades: Grade[] = ['again', 'hard', 'good', 'easy']
+  const out = {} as Record<Grade, string>
+  for (const g of grades) {
+    const next = applyGrade(prev, g, now, prefs)
+    const delta = next.due - now
+    if (delta <= 0) out[g] = 'сейчас'
+    else if (delta < 60_000) out[g] = `${Math.max(1, Math.round(delta / 1000))} сек`
+    else if (delta < DAY) out[g] = `${Math.max(1, Math.round(delta / MINUTE))} мин`
+    else out[g] = `${Math.max(1, Math.round(delta / DAY))} дн`
+  }
+  return out
+}
+
 export function formatDueLabel(sched: CardSchedule | null, now: number): string {
   if (!sched) return 'ещё не начато'
   const delta = sched.due - now

@@ -1,27 +1,38 @@
 <script setup lang="ts">
-import type { Database } from 'sql.js'
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch, watchEffect } from 'vue'
-import {
-  getPictureBlob,
-  sampleRusTranslationsForQuiz,
-  type WordRow,
-} from '../db/rewordDb'
+import type { WordRow } from '../lib/catalogTypes'
 import { parseExamples, stripHighlights } from '../lib/examples'
-import { uint8ToObjectUrl } from '../lib/imageBlob'
 import type { CardSchedule, CategoryScopePrefs, Grade } from '../lib/progressTypes'
-import { formatDueLabel } from '../lib/srs'
+import { formatDueLabel, previewNextIntervals } from '../lib/srs'
 import { REMOTE_PICTURE_MAX, resolveRemotePictureUrls } from '../lib/remotePictureUrl'
+import { useCatalogStore } from '../stores/catalog'
+import { useProgressStore } from '../stores/progress'
 import { matchesTranslation } from '../lib/text'
 import { lemmaMatchesGuess, pickClozeLine } from '../lib/cloze'
 import { speakEnglish, speechSynthesisSupported } from '../lib/speech'
+import { pickStudyMode, type StudyInteractionMode } from '../study/pickMode'
 import Highlighted from './Highlighted.vue'
 import AiHintSidebar from './AiHintSidebar.vue'
 import StudyBadge from './StudyBadge.vue'
+import GrammarLinks from './GrammarLinks.vue'
 
-type StudyInteractionMode = 'type' | 'reveal' | 'choice' | 'cloze'
+const GRADE_HELP_KEY = 'vocabdesk-grade-help-seen'
+const MODE_LABEL: Record<StudyInteractionMode, string> = {
+  type: 'Ввод',
+  reveal: 'Ответ',
+  choice: 'Тест',
+  cloze: 'Контекст',
+}
+
+function gradeHelpSeen(): boolean {
+  try {
+    return localStorage.getItem(GRADE_HELP_KEY) === '1'
+  } catch {
+    return true
+  }
+}
 
 const props = defineProps<{
-  db: Database
   word: WordRow
   schedule: CardSchedule | null
   variantIsYoung: boolean
@@ -30,11 +41,16 @@ const props = defineProps<{
   categoryId: string | null
 }>()
 
+const catalog = useCatalogStore()
+const progressStore = useProgressStore()
+const distractors = ref<string[]>([])
+
 const emit = defineEmits<{
   memorized: []
   grade: [g: Grade]
   deferInSession: []
   markMasteredForever: []
+  openGrammar: [id: string]
 }>()
 
 function shuffleArray<T>(a: T[]): T[] {
@@ -48,8 +64,22 @@ function shuffleArray<T>(a: T[]): T[] {
   return copy
 }
 
+function modeForWord(): StudyInteractionMode {
+  const auto = pickStudyMode(props.schedule)
+  if (auto !== 'cloze') return auto
+  const lines = parseExamples(props.word.examplesRus)
+    .map((e) => stripHighlights(e.original).trim())
+    .filter(Boolean)
+    .slice(0, 4)
+  return pickClozeLine(props.word.word, lines) ? 'cloze' : 'type'
+}
+
 const young = computed(() => props.variantIsYoung)
-const mode = ref<StudyInteractionMode>('choice')
+const mode = ref<StudyInteractionMode>(modeForWord())
+const hintOpen = ref(false)
+const modeMenuOpen = ref(false)
+const notesOpen = ref(false)
+const showGradeHelp = ref(!gradeHelpSeen())
 const clozePhase = ref<'input' | 'solved' | 'peek'>('input')
 const clozeGuess = ref('')
 const revealed = ref(false)
@@ -63,7 +93,11 @@ const galleryRemoteOkRef = shallowRef(false)
 watch(
   () => props.word.id,
   () => {
-    mode.value = 'choice'
+    mode.value = modeForWord()
+    hintOpen.value = false
+    modeMenuOpen.value = false
+    notesOpen.value = false
+    showGradeHelp.value = !gradeHelpSeen()
     revealed.value = false
     guess.value = ''
     typingSkipped.value = false
@@ -75,33 +109,14 @@ watch(
 
 watchEffect((onCleanup) => {
   let cancelled = false
-  let blobToRevoke: string | null = null
 
   const cleanup = () => {
     cancelled = true
-    if (blobToRevoke) {
-      URL.revokeObjectURL(blobToRevoke)
-      blobToRevoke = null
-    }
   }
   onCleanup(cleanup)
 
   galleryRemoteOkRef.value = false
   mediaNotice.value = null
-
-  if (props.word.pictureId && props.word.picBlobLen > 0) {
-    const bytes = getPictureBlob(props.db, props.word.pictureId)
-    const blobObjectUrl = bytes ? uint8ToObjectUrl(bytes) : null
-    if (!blobObjectUrl) {
-      imageUrls.value = []
-      mediaNotice.value = 'Фото указано в бэкапе, но данные не прочитаны.'
-      return
-    }
-    blobToRevoke = blobObjectUrl
-    imageUrls.value = [blobObjectUrl]
-    return
-  }
-
   imageUrls.value = []
 
   void (async () => {
@@ -145,8 +160,24 @@ const clozeLine = computed(() => pickClozeLine(props.word.word, exampleEnglishLi
 
 const cardTitle = computed(() => (young.value ? 'Изучение нового слова' : 'Повторение слова'))
 
-const distractors = computed(() =>
-  sampleRusTranslationsForQuiz(props.db, props.scope, props.categoryId, props.word.id, 48, props.scopePrefs),
+watch(
+  () => [props.word.id, props.scope, props.categoryId] as const,
+  () => {
+    distractors.value = []
+    void catalog
+      .quizRus({ scope: props.scope, categoryId: props.categoryId, exclude: props.word.id })
+      .then((rus) => {
+        distractors.value = rus
+      })
+      .catch(() => {
+        distractors.value = []
+      })
+  },
+  { immediate: true },
+)
+
+const gradeHints = computed(() =>
+  previewNextIntervals(props.schedule, Date.now(), progressStore.snapshot.prefs),
 )
 
 const mcOptions = computed(() => {
@@ -189,10 +220,10 @@ function onKey(e: KeyboardEvent) {
     revealed.value = true
   }
   if (!young.value && translationKnown.value) {
-    if (e.key === '1') emit('grade', 'again')
-    if (e.key === '2') emit('grade', 'hard')
-    if (e.key === '3') emit('grade', 'good')
-    if (e.key === '4') emit('grade', 'easy')
+    if (e.key === '1') onGradeClick('again')
+    if (e.key === '2') onGradeClick('hard')
+    if (e.key === '3') onGradeClick('good')
+    if (e.key === '4') onGradeClick('easy')
   }
 }
 
@@ -245,15 +276,35 @@ function mcOptionClass(label: string): string {
 
 function resetModeUi(m: StudyInteractionMode) {
   mode.value = m
+  modeMenuOpen.value = false
   picked.value = null
   revealed.value = false
   clozePhase.value = 'input'
   clozeGuess.value = ''
 }
+
+function markGradeHelpSeen() {
+  try {
+    localStorage.setItem(GRADE_HELP_KEY, '1')
+  } catch {
+    /* квота */
+  }
+  showGradeHelp.value = false
+}
+
+function onGradeClick(g: Grade) {
+  markGradeHelpSeen()
+  emit('grade', g)
+}
+
+function onMemorizedClick() {
+  markGradeHelpSeen()
+  emit('memorized')
+}
 </script>
 
 <template>
-  <div class="study-with-hint">
+  <div class="study-with-hint" :class="{ 'hint-open': hintOpen }">
     <div class="study-layout">
       <div class="study-session-card panel">
         <header class="study-session-card-head">
@@ -266,20 +317,6 @@ function resetModeUi(m: StudyInteractionMode) {
             <span class="muted small due-pill">{{ scheduleTitle }}</span>
           </div>
         </header>
-
-        <div
-          v-if="imageUrls.length > 0"
-          :class="['study-word-media', imageUrls.length === 1 ? 'study-word-media--solo' : '']"
-        >
-          <img
-            v-for="(url, i) in imageUrls"
-            :key="`${word.id}-${i}-${url.slice(0, 48)}`"
-            class="study-word-thumb"
-            alt=""
-            :src="url"
-            @error="onImgError"
-          />
-        </div>
 
         <div v-if="mode !== 'cloze' || translationKnown" class="study-word-block">
           <div class="study-lemma-row">
@@ -294,18 +331,30 @@ function resetModeUi(m: StudyInteractionMode) {
               🔊 EN
             </button>
           </div>
-          <div v-if="word.transcription" class="ipa muted study-transcription">{{ word.transcription }}</div>
+          <template v-if="translationKnown">
+            <div v-if="word.transcription" class="ipa study-transcription">{{ word.transcription }}</div>
+            <div v-if="word.oxfordLevels?.length" class="oxford-badges">
+              <span v-for="lv in word.oxfordLevels" :key="lv" class="oxford-level-badge">Oxford {{ lv }}</span>
+            </div>
+          </template>
         </div>
         <p v-else class="muted small study-cloze-lead">
           Режим контекста: сначала восстановите слово по предложению, затем откроется перевод.
         </p>
 
-        <div v-if="mediaNotice" class="study-media-notice" role="note">
-          <span class="study-media-notice-label">Медиа</span>
-          <span class="study-media-notice-text">{{ mediaNotice }}</span>
+        <div class="study-mode-compact">
+          <span class="muted small">Режим: {{ MODE_LABEL[mode] }}</span>
+          <button
+            type="button"
+            class="btn-quiet study-mode-more"
+            :aria-expanded="modeMenuOpen"
+            aria-label="Сменить способ ответа"
+            @click="modeMenuOpen = !modeMenuOpen"
+          >
+            ⋯
+          </button>
         </div>
-
-        <div class="study-mode-bar" role="tablist" aria-label="Способ ответа">
+        <div v-if="modeMenuOpen" class="study-mode-bar" role="tablist" aria-label="Способ ответа">
           <button
             type="button"
             role="tab"
@@ -412,53 +461,91 @@ function resetModeUi(m: StudyInteractionMode) {
           <div class="study-answer-label muted small">Перевод</div>
           <div class="big ru study-translation">{{ word.rus ?? '—' }}</div>
 
-          <div v-if="ex.length" class="examples compact study-examples">
-            <div class="muted small">Примеры</div>
-            <ul>
-              <li v-for="(e, i) in ex" :key="i">
-                <div class="ex-o">
-                  <Highlighted :text="e.original" />
-                </div>
-                <div class="ex-t muted">
-                  <Highlighted :text="e.translate" />
-                </div>
-              </li>
-            </ul>
+          <div
+            v-if="imageUrls.length > 0"
+            :class="['study-word-media', imageUrls.length === 1 ? 'study-word-media--solo' : '']"
+          >
+            <img
+              v-for="(url, i) in imageUrls"
+              :key="`${word.id}-${i}-${url.slice(0, 48)}`"
+              class="study-word-thumb"
+              alt=""
+              :src="url"
+              @error="onImgError"
+            />
           </div>
+
+          <details class="study-notes-fold" :open="notesOpen" @toggle="notesOpen = ($event.target as HTMLDetailsElement).open">
+            <summary class="study-notes-summary">Примеры и заметки</summary>
+            <div v-if="ex.length" class="examples compact study-examples">
+              <ul>
+                <li v-for="(e, i) in ex" :key="i">
+                  <div class="ex-o">
+                    <Highlighted :text="e.original" />
+                  </div>
+                  <div class="ex-t muted">
+                    <Highlighted :text="e.translate" />
+                  </div>
+                </li>
+              </ul>
+            </div>
+            <p v-else class="muted small">Нет примеров для этого слова.</p>
+            <p v-if="mediaNotice" class="study-media-notice" role="note">{{ mediaNotice }}</p>
+          </details>
+          <GrammarLinks :lemma="word.word" :oxford-levels="word.oxfordLevels" @open="emit('openGrammar', $event)" />
         </div>
 
+        <button
+          v-if="!hintOpen"
+          type="button"
+          class="btn-quiet study-hint-toggle"
+          @click="hintOpen = true"
+        >
+          Подсказка
+        </button>
+
         <template v-if="young">
-          <div class="reword-actions">
-            <button type="button" class="reword-memorized" @click="emit('memorized')">Запомнил, отложить для повторения</button>
-            <span class="reword-actions-divider" aria-hidden />
-            <button type="button" class="reword-again" @click="emit('deferInSession')">Показать это слово ещё</button>
-          </div>
-          <button v-if="translationKnown" type="button" class="btn-mastered" @click="emit('markMasteredForever')">
-            <span class="btn-mastered-title">Выучил навсегда</span>
-            <span class="grade-hint">Не показывать в «Учить» и повторах</span>
-          </button>
-          <p class="muted small kbd-center">
-            «Запомнил» — следующий шаг в SRS (как «Хорошо»). «Ещё» — вернёт карточку позже в этой сессии. Пробел — в режиме «Ответ».
-          </p>
+          <template v-if="translationKnown">
+            <p v-if="showGradeHelp" class="study-grade-help muted small">
+              «Запомнил» — слово вернётся по расписанию (как оценка «Хорошо»).
+            </p>
+            <div class="reword-actions">
+              <button type="button" class="reword-memorized" @click="onMemorizedClick">Запомнил, отложить для повторения</button>
+              <span class="reword-actions-divider" aria-hidden />
+              <button type="button" class="reword-again" @click="emit('deferInSession')">Показать это слово ещё</button>
+            </div>
+            <button type="button" class="btn-mastered" @click="emit('markMasteredForever')">
+              <span class="btn-mastered-title">Выучил навсегда</span>
+              <span class="grade-hint">Не показывать в «Учить» и повторах</span>
+            </button>
+          </template>
+          <template v-else>
+            <div class="reword-actions defer-only">
+              <button type="button" class="reword-again" @click="emit('deferInSession')">Показать это слово ещё</button>
+            </div>
+          </template>
         </template>
         <template v-else>
           <template v-if="translationKnown">
+            <p v-if="showGradeHelp" class="study-grade-help muted small">
+              Оценка задаёт, когда слово вернётся. Подписи — ожидаемый интервал.
+            </p>
             <div class="grade-bar reword-grade-bar" role="group" aria-label="Оценка ответа">
-              <button type="button" class="grade again" @click="emit('grade', 'again')">
+              <button type="button" class="grade again" @click="onGradeClick('again')">
                 <span class="grade-top"> Снова <span class="kbd-mini">1</span> </span>
-                <span class="grade-hint">Скоро снова в очереди</span>
+                <span class="grade-hint">{{ gradeHints.again }}</span>
               </button>
-              <button type="button" class="grade hard" @click="emit('grade', 'hard')">
+              <button type="button" class="grade hard" @click="onGradeClick('hard')">
                 <span class="grade-top"> Сложно <span class="kbd-mini">2</span> </span>
-                <span class="grade-hint">Короче интервал до следующего раза</span>
+                <span class="grade-hint">{{ gradeHints.hard }}</span>
               </button>
-              <button type="button" class="grade good" @click="emit('grade', 'good')">
+              <button type="button" class="grade good" @click="onGradeClick('good')">
                 <span class="grade-top"> Хорошо <span class="kbd-mini">3</span> </span>
-                <span class="grade-hint">Обычный шаг расписания</span>
+                <span class="grade-hint">{{ gradeHints.good }}</span>
               </button>
-              <button type="button" class="grade easy" @click="emit('grade', 'easy')">
+              <button type="button" class="grade easy" @click="onGradeClick('easy')">
                 <span class="grade-top"> Легко <span class="kbd-mini">4</span> </span>
-                <span class="grade-hint">Дольше до следующего показа</span>
+                <span class="grade-hint">{{ gradeHints.easy }}</span>
               </button>
             </div>
             <button type="button" class="btn-mastered" @click="emit('markMasteredForever')">
@@ -474,19 +561,19 @@ function resetModeUi(m: StudyInteractionMode) {
             <div class="reword-actions defer-only">
               <button type="button" class="reword-again" @click="emit('deferInSession')">Показать это слово ещё</button>
             </div>
-            <p class="muted small kbd-center">
-              Выберите режим, откройте перевод — затем оцените ответ клавишами 1–4.
-            </p>
+            <p class="muted small kbd-center">Ответьте — затем оцените клавишами 1–4.</p>
           </template>
         </template>
       </div>
     </div>
     <AiHintSidebar
+      v-if="hintOpen"
       :word-id="word.id"
       :lemma="word.word"
       :ipa="word.transcription"
       :mode="mode"
       :example-english-lines="exampleEnglishLines"
+      @close="hintOpen = false"
     />
   </div>
 </template>

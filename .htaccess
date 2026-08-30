@@ -1,0 +1,14 @@
+DirectoryIndex dist/index.html
+RewriteEngine On
+
+RewriteRule ^api(/|$) - [L]
+
+RewriteCond %{REQUEST_URI} ^/$
+RewriteRule ^ dist/index.html [L]
+
+RewriteCond %{REQUEST_URI} !^/api
+RewriteCond %{DOCUMENT_ROOT}/dist/$1 -f
+RewriteRule ^(.*)$ dist/$1 [L]
+
+RewriteCond %{REQUEST_URI} !^/api
+RewriteRule ^ dist/index.html [L]

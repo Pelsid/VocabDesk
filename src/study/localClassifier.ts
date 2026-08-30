@@ -1,5 +1,5 @@
+import type { WordFilter } from '../lib/catalogTypes'
 import type { CardSchedule } from '../lib/progressTypes'
-import type { WordFilter } from '../db/rewordDb'
 
 /** Режимы глобальных вкладок «Новое» / «Повторение» / «Изученное» */
 export type ProgressBrowseMode = 'new_words' | 'due_now' | 'learned_review'

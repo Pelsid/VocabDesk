@@ -1,34 +1,58 @@
 <script setup lang="ts">
-import type { Database } from 'sql.js'
-import { computed, ref } from 'vue'
-import { listWordsInCategory, type WordFilter } from '../db/rewordDb'
+import { computed, ref, watch } from 'vue'
+import type { WordFilter, WordRow } from '../lib/catalogTypes'
 import Highlighted from './Highlighted.vue'
 import StudyBadge from './StudyBadge.vue'
 import { parseExamples } from '../lib/examples'
 import { useProgressStore } from '../stores/progress'
+import { useCatalogStore } from '../stores/catalog'
 import { getSchedule, matchesLocalFilter, isWordMastered } from '../study/localClassifier'
 import { storeToRefs } from 'pinia'
+import GrammarLinks from './GrammarLinks.vue'
+
+const emit = defineEmits<{ openGrammar: [id: string] }>()
 
 const props = defineProps<{
-  db: Database
   categoryId: string
   categoryName: string
   categoryGlyph: string
+  oxfordOverlap?: number
+  kind?: string
 }>()
 
+const catalog = useCatalogStore()
 const progress = useProgressStore()
 const { snapshot, revision } = storeToRefs(progress)
 
 const filter = ref<WordFilter>('all')
 const q = ref('')
 const openId = ref<number | null>(null)
+const rowsAll = ref<WordRow[]>([])
+const loading = ref(false)
 
-const rowsAll = computed(() => listWordsInCategory(props.db, props.categoryId, q.value))
+async function reload() {
+  loading.value = true
+  try {
+    rowsAll.value = await catalog.loadCategoryWords(props.categoryId)
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(
+  () => props.categoryId,
+  () => {
+    void reload()
+  },
+  { immediate: true },
+)
 
 const rows = computed(() => {
   void revision.value
   const now = Date.now()
+  const t = q.value.trim().toLowerCase()
   return rowsAll.value
+    .filter((w) => !t || w.word.toLowerCase().includes(t) || (w.rus?.toLowerCase().includes(t) ?? false))
     .filter((w) => matchesLocalFilter(getSchedule(snapshot.value.words, w.id), filter.value, w.id, snapshot.value.mastered))
     .map((w) => ({
       w,
@@ -49,7 +73,10 @@ function toggleOpen(id: number) {
         <span class="section-icon" aria-hidden>{{ categoryGlyph }}</span>
         {{ categoryName }}
       </h2>
-      <span class="muted small">{{ rows.length }} слов в списке</span>
+      <span class="muted small">
+        {{ rows.length }} слов
+        <template v-if="kind === 'thematic' && (oxfordOverlap ?? 0) > 0"> · {{ oxfordOverlap }} также в Oxford</template>
+      </span>
     </div>
 
     <div class="subtoolbar">
@@ -62,12 +89,14 @@ function toggleOpen(id: number) {
       <input v-model="q" placeholder="Фильтр по слову / переводу" />
     </div>
 
+    <p v-if="loading" class="muted small">Загрузка слов…</p>
+
     <div class="table">
       <div class="table-head row">
         <div>Слово</div>
         <div>Перевод</div>
         <div>Статус</div>
-        <div>Медиа</div>
+        <div>Oxford</div>
       </div>
       <div v-for="{ w, sched, now } in rows" :key="w.id" :class="['table-row', openId === w.id ? 'open' : '']">
         <button type="button" class="row-main" @click="toggleOpen(w.id)">
@@ -80,7 +109,7 @@ function toggleOpen(id: number) {
             <StudyBadge :schedule="sched" :now="now" :mastered="isWordMastered(snapshot.mastered, w.id)" />
           </div>
           <div class="muted small">
-            {{ w.picBlobLen > 0 ? 'фото в бэкапе' : w.picSource ? `${w.picSource}` : '—' }}
+            {{ w.oxfordLevels?.length ? w.oxfordLevels.join(', ') : '—' }}
           </div>
         </button>
         <div v-if="openId === w.id" class="row-detail">
@@ -97,7 +126,8 @@ function toggleOpen(id: number) {
               </li>
             </ul>
           </div>
-          <div v-else class="muted small">В бэкапе нет примеров для этого слова.</div>
+          <div v-else class="muted small">Нет примеров для этого слова.</div>
+          <GrammarLinks :lemma="w.word" :oxford-levels="w.oxfordLevels" @open="emit('openGrammar', $event)" />
         </div>
       </div>
     </div>

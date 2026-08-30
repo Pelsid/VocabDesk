@@ -1,21 +1,16 @@
 <script setup lang="ts">
-import type { Database } from 'sql.js'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import './App.css'
 import './redesign.css'
 import DictionaryView from './components/DictionaryView.vue'
 import LearnView from './components/LearnView.vue'
 import ProgressBrowseView from './components/ProgressBrowseView.vue'
-import UploadScreen from './components/UploadScreen.vue'
 import DataMenu from './components/DataMenu.vue'
 import GroqUsageBadge from './components/GroqUsageBadge.vue'
 import AppSidebar, { type AppTab } from './components/AppSidebar.vue'
 import ChatView from './components/ChatView.vue'
 import GrammarView from './components/GrammarView.vue'
-import { IDB_KEYS, ensureBackupCacheMigrated, idbGet, idbPut } from './lib/backupIdb'
-import { getStudyStreak } from './lib/dailyLearned'
-import { loadProgress } from './lib/progressStorage'
-import { listCategoryStats, openRewordDatabase } from './db/rewordDb'
+import { useCatalogStore } from './stores/catalog'
 import { useProgressStore } from './stores/progress'
 
 type Tab = AppTab
@@ -30,30 +25,22 @@ const PAGE_TITLE: Record<Tab, string> = {
   chat: 'Чат с AI',
 }
 
+const catalog = useCatalogStore()
 const progress = useProgressStore()
 
-const db = ref<Database | null>(null)
-const backupBuffer = ref<ArrayBuffer | null>(null)
-const busy = ref(false)
 const hydrating = ref(true)
 const err = ref<string | null>(null)
 const tab = ref<Tab>('learn')
 const selectedCategoryId = ref<string | null>(null)
 const sidebarOpen = ref(false)
 const startWordId = ref<number | null>(null)
+const grammarLessonId = ref<string | null>(null)
 
 onMounted(() => {
   void (async () => {
     try {
-      await ensureBackupCacheMigrated()
-      const buf = await idbGet<ArrayBuffer>(IDB_KEYS.backupBuffer)
-      if (!buf) {
-        hydrating.value = false
-        return
-      }
-      const database = await openRewordDatabase(buf)
-      backupBuffer.value = buf
-      db.value = database
+      const boot = await catalog.loadBootstrap()
+      progress.hydrate(boot.progress, boot.daily, boot.hasGroqKey)
     } catch (e) {
       err.value = e instanceof Error ? e.message : String(e)
     } finally {
@@ -62,44 +49,10 @@ onMounted(() => {
   })()
 })
 
-watch(db, (d) => {
-  if (!d) return
-  const snap = loadProgress()
-  if (Object.keys(snap.words).length > 0) return
-  progress.importFromRewordBackupDb(d, 'mergeOverwrite')
-})
-
-const categories = computed(() => (db.value ? listCategoryStats(db.value) : []))
-
 const streak = computed(() => {
   void progress.revision
-  return getStudyStreak()
+  return progress.daily.streak
 })
-
-async function handlePick(file: File) {
-  busy.value = true
-  err.value = null
-  try {
-    const buf = await file.arrayBuffer()
-    await idbPut(IDB_KEYS.backupBuffer, buf)
-    await idbPut(IDB_KEYS.backupMeta, { name: file.name, savedAt: Date.now() })
-    const database = await openRewordDatabase(buf)
-    backupBuffer.value = buf
-    db.value = database
-  } catch (e) {
-    err.value = e instanceof Error ? e.message : String(e)
-  } finally {
-    busy.value = false
-  }
-}
-
-async function replaceBackup(buffer: ArrayBuffer, meta: { name: string }) {
-  await idbPut(IDB_KEYS.backupBuffer, buffer)
-  await idbPut(IDB_KEYS.backupMeta, { ...meta, savedAt: Date.now() })
-  const database = await openRewordDatabase(buffer)
-  backupBuffer.value = buffer
-  db.value = database
-}
 
 function go(next: Tab) {
   tab.value = next
@@ -115,16 +68,31 @@ function onRepeatWord(id: number) {
 function onConsumedStartWord() {
   startWordId.value = null
 }
+
+function openGrammarLesson(id: string) {
+  grammarLessonId.value = id
+  tab.value = 'grammar'
+  sidebarOpen.value = false
+}
+
+function onConsumedGrammarLesson() {
+  grammarLessonId.value = null
+}
 </script>
 
 <template>
   <div v-if="hydrating" class="upload-screen">
     <div class="upload-card">
-      <div class="muted">Загрузка кэша словаря из браузера…</div>
+      <div class="muted">Подключаемся к CoreWords…</div>
     </div>
   </div>
 
-  <UploadScreen v-else-if="!db" :busy="busy" :error="err" @pick="handlePick" />
+  <div v-else-if="err" class="upload-screen">
+    <div class="upload-card">
+      <p class="alert">{{ err }}</p>
+      <p class="muted small">Проверьте, что MariaDB запущена и каталог импортирован.</p>
+    </div>
+  </div>
 
   <div v-else class="app">
     <AppSidebar :tab="tab" :open="sidebarOpen" :streak="streak" @navigate="go" @close="sidebarOpen = false">
@@ -132,7 +100,7 @@ function onConsumedStartWord() {
         <GroqUsageBadge />
       </template>
       <template #data>
-        <DataMenu :db="db" :backup-buffer="backupBuffer" :on-replace-backup="replaceBackup" />
+        <DataMenu />
       </template>
     </AppSidebar>
 
@@ -147,39 +115,42 @@ function onConsumedStartWord() {
       <main class="main">
         <DictionaryView
           v-if="tab === 'dictionary'"
-          :db="db"
-          :categories="categories"
           :selected-id="selectedCategoryId"
           @select-category="selectedCategoryId = $event"
+          @open-grammar="openGrammarLesson"
         />
         <LearnView
           v-else-if="tab === 'learn'"
-          :db="db"
           :active-category-id="selectedCategoryId"
           :start-word-id="startWordId"
           @navigate="go"
           @consumed-start-word="onConsumedStartWord"
+          @open-grammar="openGrammarLesson"
         />
         <ProgressBrowseView
           v-else-if="tab === 'repeat'"
-          :db="db"
           mode="due_now"
           :active-category-id="selectedCategoryId"
           @repeat-word="onRepeatWord"
+          @open-grammar="openGrammarLesson"
         />
         <ProgressBrowseView
           v-else-if="tab === 'learned'"
-          :db="db"
           mode="learned_review"
           :active-category-id="selectedCategoryId"
+          @open-grammar="openGrammarLesson"
         />
         <ProgressBrowseView
           v-else-if="tab === 'newWords'"
-          :db="db"
           mode="new_words"
           :active-category-id="selectedCategoryId"
+          @open-grammar="openGrammarLesson"
         />
-        <GrammarView v-else-if="tab === 'grammar'" />
+        <GrammarView
+          v-else-if="tab === 'grammar'"
+          :start-lesson-id="grammarLessonId"
+          @consumed-start-lesson="onConsumedGrammarLesson"
+        />
         <ChatView v-else />
       </main>
     </div>

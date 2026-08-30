@@ -3,7 +3,6 @@
 import { GROQ_MODEL_DEFAULT } from './groqStudyHint'
 import { recordGroqRequest } from './groqUsageTracker'
 
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const LS_KEY = 'vocabdesk-chat-threads-v1'
 
 export const CHAT_SYSTEM_PROMPT = `You are a friendly English conversation partner for a Russian-speaking learner.
@@ -74,7 +73,6 @@ export function titleFromFirstMessage(text: string): string {
 }
 
 export async function streamGroqChat(args: {
-  apiKey: string
   history: ChatMessage[]
   onDelta: (chunk: string) => void
   signal?: AbortSignal
@@ -84,17 +82,13 @@ export async function streamGroqChat(args: {
     ...args.history.map((m) => ({ role: m.role, content: m.content })),
   ]
 
-  const res = await fetch(GROQ_URL, {
+  const res = await fetch('/api/groq.php', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${args.apiKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: GROQ_MODEL_DEFAULT,
-      temperature: 0.7,
-      max_tokens: 700,
+      mode: 'chat',
       stream: true,
+      model: GROQ_MODEL_DEFAULT,
       messages,
     }),
     signal: args.signal,

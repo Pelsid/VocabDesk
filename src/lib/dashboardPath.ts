@@ -1,6 +1,5 @@
-import type { Database } from 'sql.js'
-import type { CategoryStat } from '../db/rewordDb'
-import { listWordIdsInCategory } from '../db/rewordDb'
+import type { CategoryStat } from './catalogTypes'
+import { listWordIdsInCategory } from './catalogScope'
 import { getSchedule, isReviewStageForDictionaryPct, isWordMastered } from '../study/localClassifier'
 import type { ProgressSnapshot } from './progressTypes'
 
@@ -22,7 +21,7 @@ export interface OxfordPathRow {
 }
 
 export function computeOxfordPathRows(
-  db: Database,
+  wordIdsByDict: Record<string, number[]>,
   categories: CategoryStat[],
   snapshot: ProgressSnapshot,
 ): OxfordPathRow[] {
@@ -30,7 +29,7 @@ export function computeOxfordPathRows(
   for (const id of OXFORD_PATH_CATEGORY_IDS) {
     const c = categories.find((x) => x.id === id)
     if (!c) continue
-    const ids = listWordIdsInCategory(db, id)
+    const ids = listWordIdsInCategory(wordIdsByDict, id)
     const learnedLocal = ids.reduce((acc, wid) => {
       const sched = getSchedule(snapshot.words, wid)
       const mastered = isWordMastered(snapshot.mastered, wid)
