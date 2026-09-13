@@ -4,7 +4,13 @@ import { DEFAULT_PREFS, emptySnapshot, type Grade, type ProgressSnapshot, type U
 import { appendWeakHit } from '../lib/weakWordLog'
 
 function emptyDaily(): DailyPayload {
-  return { todayCount: 0, days: [], streak: 0, weekFlags: [false, false, false, false, false, false, false] }
+  return {
+    todayCount: 0,
+    days: [],
+    dayCounts: {},
+    streak: 0,
+    weekFlags: [false, false, false, false, false, false, false],
+  }
 }
 
 export const useProgressStore = defineStore('progress', {

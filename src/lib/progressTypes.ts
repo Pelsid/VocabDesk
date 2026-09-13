@@ -39,6 +39,10 @@ export interface UserPrefs {
   customCategoryIds: string[]
   /** Активный именованный профиль SRS или null после ручной правки ползунков */
   srsPresetId: string | null
+  /** Имя в приветствии на главной */
+  displayName: string
+  theme: 'dark' | 'light'
+  notificationsEnabled: boolean
 }
 
 export const DEFAULT_PREFS: UserPrefs = {
@@ -50,6 +54,9 @@ export const DEFAULT_PREFS: UserPrefs = {
   categoryScopeMode: 'reword',
   customCategoryIds: [],
   srsPresetId: null,
+  displayName: '',
+  theme: 'dark',
+  notificationsEnabled: false,
 }
 
 /** Фрагмент настроек для SQL-области «selected». */

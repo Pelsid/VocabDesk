@@ -11,8 +11,9 @@ require_method('GET');
 $uid = api_user_id();
 json_ok([
     'dictionaries' => catalog_dictionaries($uid),
-    'dictionaryWordIds' => catalog_word_ids_by_dictionary(),
+    'dictionaryWordIds' => catalog_word_ids_by_dictionary($uid),
     'progress' => progress_snapshot($uid),
     'daily' => daily_payload($uid),
     'hasGroqKey' => settings_has_groq_key($uid),
+    'orphanWordCount' => catalog_orphan_count($uid),
 ]);

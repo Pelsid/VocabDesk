@@ -114,7 +114,7 @@ function progress_append_weak(int $userId, int $wordId, string $grade): array
 
 function progress_bump_daily(int $userId): array
 {
-    $day = (new DateTimeImmutable('now'))->format('Y-m-d');
+    $day = app_now()->format('Y-m-d');
     $stmt = db()->prepare(
         'INSERT INTO daily_stats (user_id, day, cards_done) VALUES (?, ?, 1)
          ON DUPLICATE KEY UPDATE cards_done = cards_done + 1',
@@ -130,13 +130,15 @@ function daily_payload(int $userId): array
     );
     $stmt->execute([$userId]);
     $days = [];
-    $today = (new DateTimeImmutable('now'))->format('Y-m-d');
+    $dayCounts = [];
+    $today = app_now()->format('Y-m-d');
     $todayCount = 0;
     foreach ($stmt as $row) {
         $d = (string) $row['day'];
         $n = (int) $row['cards_done'];
         if ($n > 0) {
             $days[] = $d;
+            $dayCounts[$d] = $n;
         }
         if ($d === $today) {
             $todayCount = $n;
@@ -146,6 +148,7 @@ function daily_payload(int $userId): array
     return [
         'todayCount' => $todayCount,
         'days' => $days,
+        'dayCounts' => $dayCounts,
         'streak' => daily_streak($days, $today, $todayCount),
         'weekFlags' => daily_week_flags($days, $todayCount > 0 ? $today : null),
     ];
@@ -157,14 +160,15 @@ function daily_streak(array $days, string $today, int $todayCount): int
     if ($todayCount > 0) {
         $set[$today] = true;
     }
-    $cursor = isset($set[$today]) ? $today : (new DateTimeImmutable($today))->modify('-1 day')->format('Y-m-d');
+    $tz = app_timezone();
+    $cursor = isset($set[$today]) ? $today : (new DateTimeImmutable($today, $tz))->modify('-1 day')->format('Y-m-d');
     if (!isset($set[$cursor])) {
         return 0;
     }
     $streak = 0;
     while (isset($set[$cursor])) {
         $streak++;
-        $cursor = (new DateTimeImmutable($cursor))->modify('-1 day')->format('Y-m-d');
+        $cursor = (new DateTimeImmutable($cursor, $tz))->modify('-1 day')->format('Y-m-d');
     }
     return $streak;
 }
@@ -175,7 +179,7 @@ function daily_week_flags(array $days, ?string $todayIfDone): array
     if ($todayIfDone) {
         $set[$todayIfDone] = true;
     }
-    $now = new DateTimeImmutable('now');
+    $now = app_now();
     $dow = (int) $now->format('N'); // 1=Mon
     $monday = $now->modify('-' . ($dow - 1) . ' days');
     $flags = [];
@@ -200,9 +204,8 @@ function progress_grade(int $userId, int $wordId, string $grade): array
     if (!in_array($grade, $allowed, true)) {
         json_error('Неизвестная оценка');
     }
-    $exists = db()->prepare('SELECT 1 FROM words WHERE id = ?');
-    $exists->execute([$wordId]);
-    if (!$exists->fetchColumn()) {
+    require_once __DIR__ . '/catalog.php';
+    if ($wordId <= 0 || !catalog_can_see_word($userId, $wordId)) {
         json_error('Слово не найдено', 404);
     }
     $prefs = settings_prefs($userId);
@@ -225,6 +228,10 @@ function progress_grade(int $userId, int $wordId, string $grade): array
 
 function progress_master(int $userId, int $wordId): array
 {
+    require_once __DIR__ . '/catalog.php';
+    if ($wordId <= 0 || !catalog_can_see_word($userId, $wordId)) {
+        json_error('Слово не найдено', 404);
+    }
     $now = (int) round(microtime(true) * 1000);
     $row = progress_load_one($userId, $wordId);
     $sched = $row ? progress_row_to_schedule($row) : srs_default_new($now);

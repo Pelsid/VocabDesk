@@ -65,7 +65,12 @@ function settings_save_prefs(int $userId, array $prefs): array
     $merged['graduatingIntervalDays'] = max(1, (int) $merged['graduatingIntervalDays']);
     $merged['easyIntervalDays'] = max(1, (int) $merged['easyIntervalDays']);
     $merged['dailyGoalWords'] = max(5, min(99, (int) $merged['dailyGoalWords']));
+    $name = trim((string) ($merged['displayName'] ?? ''));
+    $merged['displayName'] = function_exists('mb_substr') ? mb_substr($name, 0, 40) : substr($name, 0, 40);
+    $merged['theme'] = (($merged['theme'] ?? 'dark') === 'light') ? 'light' : 'dark';
+    $merged['notificationsEnabled'] = !empty($merged['notificationsEnabled']);
     settings_set($userId, 'prefs', json_encode($merged, JSON_UNESCAPED_UNICODE));
+    db()->prepare('UPDATE users SET display_name = ? WHERE id = ?')->execute([$merged['displayName'], $userId]);
     return $merged;
 }
 

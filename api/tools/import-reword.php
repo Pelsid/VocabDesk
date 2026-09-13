@@ -13,6 +13,8 @@ set_time_limit(300);
 $root = dirname(__DIR__, 2);
 require_once dirname(__DIR__) . '/lib/db.php';
 
+require_local_or_token();
+
 $isCli = PHP_SAPI === 'cli';
 if (!$isCli && ($_GET['run'] ?? '') !== '1') {
     header('Content-Type: text/plain; charset=utf-8');

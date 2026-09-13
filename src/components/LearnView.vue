@@ -7,7 +7,6 @@ import { buildSessionQueue, countDueSnapshot } from '../study/sessionQueue'
 import { useCatalogStore } from '../stores/catalog'
 import { useProgressStore } from '../stores/progress'
 import { storeToRefs } from 'pinia'
-import ProgressDashboard from './ProgressDashboard.vue'
 import DailyProgressRing from './DailyProgressRing.vue'
 import SessionStudyCard from './SessionStudyCard.vue'
 import type { AppTab } from './AppSidebar.vue'
@@ -15,11 +14,13 @@ import type { AppTab } from './AppSidebar.vue'
 const props = defineProps<{
   activeCategoryId: string | null
   startWordId?: number | null
+  autoStart?: boolean
 }>()
 
 const emit = defineEmits<{
   navigate: [tab: AppTab]
   consumedStartWord: []
+  consumedAutoStart: []
   openGrammar: [id: string]
 }>()
 
@@ -182,6 +183,10 @@ function consumeStartWordIfNeeded() {
 onMounted(() => {
   window.addEventListener('keydown', onKeyEscape)
   consumeStartWordIfNeeded()
+  if (props.autoStart && !props.startWordId) {
+    void start(undefined, isFirstUse.value ? 5 : undefined)
+    emit('consumedAutoStart')
+  }
 })
 
 watch(
@@ -364,12 +369,6 @@ function onMarkMasteredForever() {
       </div>
     </div>
 
-    <ProgressDashboard
-      :categories="categories"
-      :snapshot="snapshot"
-      :revision="revision"
-    />
-
     <p class="muted small learn-dict-link">
       <button type="button" class="btn-quiet" @click="emit('navigate', 'dictionary')">Посмотреть весь словарь</button>
       · активны {{ activeCats.length }} из {{ categories.length }}
@@ -383,8 +382,11 @@ function onMarkMasteredForever() {
     </div>
 
     <div v-if="wordsInScopeTotal === 0" class="panel learn-empty-scope" role="status">
-      <p class="learn-empty-title">В этой области нет слов</p>
-      <p class="muted small">Выберите «Все выбранные» или откройте набор в «Словаре».</p>
+      <p class="learn-empty-title">{{ isFirstUse ? 'Начните с словаря' : 'В этой области нет слов' }}</p>
+      <p class="muted small">
+        Отметьте словари «В обучении» или создайте свой список в разделе «Словари». Новый аккаунт уже видит набор Oxford по умолчанию — если список пуст, откройте «Словари» и включите нужные.
+      </p>
+      <button type="button" class="btn-primary" @click="emit('navigate', 'dictionary')">Открыть словари</button>
     </div>
 
     <details class="panel queue-settings learn-advanced-panel">

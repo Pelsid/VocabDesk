@@ -1,5 +1,7 @@
 export type DictionaryKind = 'oxford' | 'thematic' | 'other'
 
+export const ORPHAN_DICTIONARY_ID = '__orphans__'
+
 export type WordFilter = 'all' | 'new' | 'learning' | 'review'
 
 export interface CategoryStat {
@@ -7,6 +9,7 @@ export interface CategoryStat {
   name: string
   isCustom: boolean
   isSelected: boolean
+  canEdit?: boolean
   customIcon: string | null
   wordCount: number
   learnedCount: number
@@ -28,4 +31,16 @@ export interface WordRow {
   picSourceId: string | null
   picBlobLen: number
   oxfordLevels?: string[]
+  isOwn?: boolean
+  dictionaryIds?: string[]
+}
+
+export type WordRelationKind = 'related' | 'synonym' | 'antonym' | 'form' | 'collocation'
+
+export interface WordRelation {
+  wordId: number
+  relatedWordId: number
+  relation: WordRelationKind
+  note: string | null
+  other: WordRow
 }

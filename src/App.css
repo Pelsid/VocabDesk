@@ -22,7 +22,7 @@
   --status-danger: #f87171;
   --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
   --radius: 16px;
-  --sidebar-w: 232px;
+  --sidebar-w: 248px;
   --sans: Inter, system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
   font-family: var(--sans);
   background:
@@ -32,8 +32,28 @@
   color: var(--text);
 }
 
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #efeaf8;
+  --surface: #ffffff;
+  --elevated: #f7f4fc;
+  --border: #ddd6ee;
+  --text: #16122a;
+  --text-primary: #16122a;
+  --text-secondary: #5b5672;
+  --text-tertiary: #7a7490;
+  --muted: var(--text-secondary);
+  --accent-glow: rgba(124, 58, 237, 0.22);
+  --shadow: 0 18px 40px rgba(40, 24, 80, 0.12);
+  background:
+    radial-gradient(1100px 640px at 12% -10%, rgba(139, 92, 246, 0.12), transparent 55%),
+    radial-gradient(900px 520px at 92% 0%, rgba(45, 212, 191, 0.08), transparent 50%),
+    var(--bg);
+}
+
 body {
   color: var(--text);
+  background: inherit;
 }
 
 .app {
@@ -1022,15 +1042,12 @@ body {
 
 .learn-ring-bg {
   fill: none;
-  stroke: color-mix(in srgb, var(--border) 85%, transparent);
-  stroke-width: 7;
-  stroke-dasharray: 10 11;
+  stroke: color-mix(in srgb, var(--border) 90%, #312e4a);
 }
 
 .learn-ring-fg {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 7;
   stroke-linecap: round;
 }
 
@@ -2169,4 +2186,121 @@ code {
 
 .dictionary .toolbar {
   flex-wrap: wrap;
+}
+
+.auth-card {
+  width: min(440px, 100%);
+}
+
+.auth-lead {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.auth-seg {
+  margin-bottom: 16px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-field-err {
+  display: block;
+  margin-top: 4px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.auth-submit {
+  width: 100%;
+}
+
+.dict-create-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dict-create-bar input {
+  flex: 1 1 200px;
+}
+
+.dict-mine-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 10px 8px 0;
+}
+
+.dict-editor {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--elevated) 70%, transparent);
+}
+
+.dict-create-word,
+.dict-create-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.dict-create-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.word-row-actions {
+  margin: 10px 0;
+}
+
+.word-links {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.word-links-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.word-links-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.word-links-add {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr auto 1fr;
+}
+
+.word-links-hits .hit {
+  width: 100%;
+  text-align: left;
+}
+
+@media (max-width: 720px) {
+  .word-links-add {
+    grid-template-columns: 1fr;
+  }
+
+  .dict-mine-actions {
+    width: 100%;
+    padding: 0 10px 10px;
+  }
 }

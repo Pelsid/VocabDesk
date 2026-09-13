@@ -45,6 +45,8 @@ export function countDueSnapshot(args: { ids: number[]; snapshot: ProgressSnapsh
   let due = 0
   let fresh = 0
   let learning = 0
+  let dueReview = 0
+  let dueHard = 0
   for (const id of ids) {
     const s = words[String(id)] ?? null
     if (!s || s.bucket === 'new') {
@@ -53,10 +55,16 @@ export function countDueSnapshot(args: { ids: number[]; snapshot: ProgressSnapsh
     }
     if (s.bucket === 'learning' || s.bucket === 'relearn') {
       learning++
-      if (s.due <= args.now) due++
+      if (s.due <= args.now) {
+        due++
+        dueHard++
+      }
       continue
     }
-    if (s.bucket === 'review' && s.due <= args.now) due++
+    if (s.bucket === 'review' && s.due <= args.now) {
+      due++
+      dueReview++
+    }
   }
-  return { total: ids.length, due, fresh, learning }
+  return { total: ids.length, due, fresh, learning, dueReview, dueHard }
 }

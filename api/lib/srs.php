@@ -17,6 +17,9 @@ function srs_default_prefs(): array
         'categoryScopeMode' => 'reword',
         'customCategoryIds' => [],
         'srsPresetId' => null,
+        'displayName' => '',
+        'theme' => 'dark',
+        'notificationsEnabled' => false,
     ];
 }
 

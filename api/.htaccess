@@ -1,0 +1,10 @@
+# Конфиг с паролями БД: наружу не отдаём (на nginx — эквивалентное правило в конфиге сайта).
+<FilesMatch "^config(\.local)?\.php$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "^config\..+\.php$">
+  Require all denied
+</FilesMatch>
+
+# Служебные скрипты (миграция, импорт) на прод заливать не нужно вовсе.
+# Если попали — доступ к ним ограничен require_local_or_token() в самих скриптах.

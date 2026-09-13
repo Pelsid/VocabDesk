@@ -65,7 +65,7 @@ function shuffleArray<T>(a: T[]): T[] {
 }
 
 function modeForWord(): StudyInteractionMode {
-  const auto = pickStudyMode(props.schedule)
+  const auto = pickStudyMode(props.schedule, Boolean(props.word.rus?.trim()))
   if (auto !== 'cloze') return auto
   const lines = parseExamples(props.word.examplesRus)
     .map((e) => stripHighlights(e.original).trim())
