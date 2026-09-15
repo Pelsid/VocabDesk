@@ -21,6 +21,10 @@ const prefs = computed(() => ({ ...DEFAULT_PREFS, ...snapshot.value.prefs }))
 const goal = computed(() => clampDailyGoal(prefs.value.dailyGoalWords || GOAL_MIN))
 const reviews = computed(() => clampReviews(prefs.value.reviewPerSession || REVIEW_MIN))
 const dictScope = computed(() => sessionDictScope(prefs.value))
+const activePreset = computed(() => SRS_PRESETS.find((p) => p.id === prefs.value.srsPresetId) ?? null)
+const modeHint = computed(() =>
+  activePreset.value?.description ?? 'Задайте цель и число повторов вручную.',
+)
 const scopeOpen = ref(false)
 const scopeRoot = ref<HTMLElement | null>(null)
 
@@ -132,7 +136,7 @@ function setReviews(n: number) {
         </button>
         <button
           type="button"
-          class="session-mode"
+          class="session-mode session-mode-manual"
           :class="{ active: prefs.srsPresetId == null }"
           @click="progress.updatePrefs({ srsPresetId: null })"
         >
@@ -145,6 +149,7 @@ function setReviews(n: number) {
           Вручную
         </button>
       </div>
+      <p class="session-mode-hint">{{ modeHint }}</p>
     </section>
 
     <div class="session-params">
@@ -158,13 +163,13 @@ function setReviews(n: number) {
           </span>
           Цель на день
         </div>
-        <div class="session-goal-value">
-          <strong>{{ goal }}</strong>
-          <span>слов</span>
-        </div>
-        <div class="session-goal-btns">
-          <button type="button" :disabled="goal <= GOAL_MIN" @click="setDailyGoal(goal - 1)">−</button>
-          <button type="button" :disabled="goal >= GOAL_MAX" @click="setDailyGoal(goal + 1)">+</button>
+        <div class="session-stepper">
+          <button type="button" :disabled="goal <= GOAL_MIN" aria-label="Уменьшить цель" @click="setDailyGoal(goal - 1)">−</button>
+          <div class="session-goal-value">
+            <strong>{{ goal }}</strong>
+            <span>слов</span>
+          </div>
+          <button type="button" :disabled="goal >= GOAL_MAX" aria-label="Увеличить цель" @click="setDailyGoal(goal + 1)">+</button>
         </div>
       </section>
 
@@ -178,13 +183,13 @@ function setReviews(n: number) {
           </span>
           Повторений за сессию
         </div>
-        <div class="session-goal-value">
-          <strong>{{ reviews }}</strong>
-          <span>повторов</span>
-        </div>
-        <div class="session-goal-btns">
-          <button type="button" :disabled="reviews <= REVIEW_MIN" @click="setReviews(reviews - 1)">−</button>
-          <button type="button" :disabled="reviews >= REVIEW_MAX" @click="setReviews(reviews + 1)">+</button>
+        <div class="session-stepper">
+          <button type="button" :disabled="reviews <= REVIEW_MIN" aria-label="Уменьшить повторы" @click="setReviews(reviews - 1)">−</button>
+          <div class="session-goal-value">
+            <strong>{{ reviews }}</strong>
+            <span>повторов</span>
+          </div>
+          <button type="button" :disabled="reviews >= REVIEW_MAX" aria-label="Увеличить повторы" @click="setReviews(reviews + 1)">+</button>
         </div>
       </section>
     </div>

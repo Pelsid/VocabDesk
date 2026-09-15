@@ -34,9 +34,20 @@ const oxford = computed(() => computeOxfordPathRows(catalog.dictionaryWordIds, p
             <DailyProgressRing :done="row.localPct" :goal="100" :size="72" :stroke="7" />
             <div class="oxford-node-center">{{ row.localPct }}%</div>
           </div>
-          <div class="oxford-node-label" :style="{ color: pctRingColor(row.localPct) }">{{ shortOxfordLabel(row.name) }}</div>
-          <div class="oxford-node-meta muted small">
-            {{ row.learnedCount.toLocaleString('ru-RU') }} / {{ row.wordCount.toLocaleString('ru-RU') }}
+          <div class="oxford-node-copy">
+            <div class="oxford-node-top">
+              <div class="oxford-node-label" :style="{ color: pctRingColor(row.localPct) }">{{ shortOxfordLabel(row.name) }}</div>
+              <div class="oxford-node-pct" :style="{ color: pctRingColor(row.localPct) }">{{ row.localPct }}%</div>
+            </div>
+            <div class="oxford-node-bar" aria-hidden>
+              <div
+                class="oxford-node-bar-fill"
+                :style="{ width: `${row.localPct}%`, background: pctRingColor(row.localPct) }"
+              />
+            </div>
+            <div class="oxford-node-meta muted small">
+              {{ row.learnedCount.toLocaleString('ru-RU') }} / {{ row.wordCount.toLocaleString('ru-RU') }}
+            </div>
           </div>
         </article>
         <span v-if="i < oxford.length - 1" class="oxford-path-arrow" aria-hidden>→</span>

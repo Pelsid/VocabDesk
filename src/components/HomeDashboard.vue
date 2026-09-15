@@ -212,11 +212,11 @@ const ctaLabel = computed(() => {
 
       <section class="dash-card home-activity">
         <div class="home-activity-head">
-          <h2>Активность за неделю</h2>
-          <div class="home-seg">
-            <button type="button" :class="{ active: activityRange === 'week' }" @click="activityRange = 'week'">Неделя</button>
-            <button type="button" :class="{ active: activityRange === 'month' }" @click="activityRange = 'month'">Месяц</button>
-            <button type="button" :class="{ active: activityRange === 'all' }" @click="activityRange = 'all'">Всё время</button>
+          <h2>Активность</h2>
+          <div class="home-seg home-activity-seg" aria-label="Период активности">
+            <button type="button" :class="{ active: activityRange === 'week' }" :aria-pressed="activityRange === 'week'" @click="activityRange = 'week'">Неделя</button>
+            <button type="button" :class="{ active: activityRange === 'month' }" :aria-pressed="activityRange === 'month'" @click="activityRange = 'month'">Месяц</button>
+            <button type="button" :class="{ active: activityRange === 'all' }" :aria-pressed="activityRange === 'all'" @click="activityRange = 'all'">Всего</button>
           </div>
         </div>
         <div class="home-activity-body">
