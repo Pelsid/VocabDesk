@@ -313,11 +313,9 @@ body {
   width: 46px;
   height: 46px;
   border-radius: 14px;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  object-fit: cover;
+  display: block;
+  background: #0a0a14;
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
 }
 
@@ -552,6 +550,8 @@ body {
 }
 
 .progress {
+  display: block;
+  width: 100%;
   margin-top: 10px;
   height: 8px;
   border-radius: 999px;
@@ -561,6 +561,7 @@ body {
 }
 
 .progress-bar {
+  display: block;
   height: 100%;
   background: linear-gradient(90deg, #14b8a6, var(--teal));
   border-radius: 999px;
@@ -1047,7 +1048,6 @@ body {
 
 .learn-ring-fg {
   fill: none;
-  stroke: var(--accent);
   stroke-linecap: round;
 }
 
@@ -2189,14 +2189,38 @@ code {
 }
 
 .auth-card {
-  width: min(440px, 100%);
+  width: min(880px, 100%);
 }
 
-.auth-lead {
-  margin: 0 0 16px;
+.auth-layout {
+  display: grid;
+  gap: 20px;
+}
+
+.auth-copy {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-copy p {
+  margin: 0;
   color: var(--muted);
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.55;
+}
+
+.auth-copy p:first-child {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+@media (min-width: 800px) {
+  .auth-layout {
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+    gap: 28px;
+    align-items: start;
+  }
 }
 
 .auth-seg {
@@ -2222,12 +2246,25 @@ code {
 .dict-create-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
 .dict-create-bar input {
   flex: 1 1 200px;
+  min-width: 0;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--elevated) 78%, transparent);
+  color: var(--text);
+  outline: none;
+  font: inherit;
+}
+
+.dict-create-bar .btn-primary {
+  flex-shrink: 0;
 }
 
 .dict-mine-actions {
@@ -2235,7 +2272,8 @@ code {
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-  padding: 8px 10px 8px 0;
+  align-self: center;
+  padding: 0;
 }
 
 .dict-editor {

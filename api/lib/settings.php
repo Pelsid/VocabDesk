@@ -42,16 +42,31 @@ function settings_prefs(int $userId): array
 {
     $raw = settings_get($userId, 'prefs');
     $prefs = srs_default_prefs();
+    $storedVersion = 0;
     if ($raw) {
         $parsed = json_decode($raw, true);
         if (is_array($parsed)) {
+            $storedVersion = (int) ($parsed['studyPrefsVersion'] ?? 0);
             $prefs = array_merge($prefs, $parsed);
         }
     }
     if (!is_array($prefs['customCategoryIds'] ?? null)) {
         $prefs['customCategoryIds'] = [];
     }
-    return $prefs;
+    $defaults = srs_default_prefs();
+    if ($storedVersion < 2) {
+        $prefs['gradeHardInterval'] = $defaults['gradeHardInterval'];
+        $prefs['gradeEasyInterval'] = $defaults['gradeEasyInterval'];
+        $prefs['easyIntervalDays'] = (int) $defaults['easyIntervalDays'];
+    }
+    $prefs['gradeAgainInterval'] = srs_sanitize_interval($prefs['gradeAgainInterval'] ?? null, $defaults['gradeAgainInterval']);
+    $prefs['gradeHardInterval'] = srs_sanitize_interval($prefs['gradeHardInterval'] ?? null, $defaults['gradeHardInterval']);
+    $prefs['gradeEasyInterval'] = srs_sanitize_interval($prefs['gradeEasyInterval'] ?? null, $defaults['gradeEasyInterval']);
+    $prefs['newWordPrompt'] = srs_sanitize_prompt($prefs['newWordPrompt'] ?? 'en');
+    $prefs['reviewWordPrompt'] = srs_sanitize_prompt($prefs['reviewWordPrompt'] ?? 'en');
+    $prefs['showPictures'] = !array_key_exists('showPictures', $prefs) || !empty($prefs['showPictures']);
+    $prefs['studyPrefsVersion'] = 2;
+    return srs_apply_preset_load($prefs);
 }
 
 function settings_save_prefs(int $userId, array $prefs): array
@@ -60,11 +75,25 @@ function settings_save_prefs(int $userId, array $prefs): array
     if (isset($merged['customCategoryIds']) && !is_array($merged['customCategoryIds'])) {
         $merged['customCategoryIds'] = [];
     }
-    $merged['newPerSession'] = max(1, (int) $merged['newPerSession']);
+    $merged['dailyGoalWords'] = max(5, min(99, (int) $merged['dailyGoalWords']));
+    $merged['newPerSession'] = max(1, (int) ($merged['newPerSession'] ?? $merged['dailyGoalWords']));
     $merged['reviewPerSession'] = max(1, (int) $merged['reviewPerSession']);
     $merged['graduatingIntervalDays'] = max(1, (int) $merged['graduatingIntervalDays']);
     $merged['easyIntervalDays'] = max(1, (int) $merged['easyIntervalDays']);
-    $merged['dailyGoalWords'] = max(5, min(99, (int) $merged['dailyGoalWords']));
+    $merged['sessionDictScope'] = (($merged['sessionDictScope'] ?? 'selected') === 'all') ? 'all' : 'selected';
+    $merged['srsPresetOverrides'] = srs_sanitize_preset_overrides($merged['srsPresetOverrides'] ?? null);
+    $defaults = srs_default_prefs();
+    $merged['gradeAgainInterval'] = srs_sanitize_interval($merged['gradeAgainInterval'] ?? null, $defaults['gradeAgainInterval']);
+    $merged['gradeHardInterval'] = srs_sanitize_interval($merged['gradeHardInterval'] ?? null, $defaults['gradeHardInterval']);
+    $merged['gradeEasyInterval'] = srs_sanitize_interval($merged['gradeEasyInterval'] ?? null, $defaults['gradeEasyInterval']);
+    $merged['newWordPrompt'] = srs_sanitize_prompt($merged['newWordPrompt'] ?? 'en');
+    $merged['reviewWordPrompt'] = srs_sanitize_prompt($merged['reviewWordPrompt'] ?? 'en');
+    $merged['showPictures'] = !array_key_exists('showPictures', $merged) || !empty($merged['showPictures']);
+    $merged['studyPrefsVersion'] = 2;
+    $merged = srs_apply_preset_load($merged);
+    if ($merged['srsPresetOverrides'] === []) {
+        $merged['srsPresetOverrides'] = new stdClass();
+    }
     $name = trim((string) ($merged['displayName'] ?? ''));
     $merged['displayName'] = function_exists('mb_substr') ? mb_substr($name, 0, 40) : substr($name, 0, 40);
     $merged['theme'] = (($merged['theme'] ?? 'dark') === 'light') ? 'light' : 'dark';

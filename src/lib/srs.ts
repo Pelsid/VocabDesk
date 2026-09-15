@@ -1,4 +1,5 @@
 import type { CardSchedule, Grade, UserPrefs } from './progressTypes'
+import { formatGradeInterval, gradeIntervalDays, gradeIntervalMs, intervalPrefForGrade } from './studyPrefs'
 
 const MINUTE = 60_000
 const DAY = 86_400_000
@@ -35,14 +36,27 @@ export function applyGrade(
   prefs: UserPrefs,
 ): CardSchedule {
   const base = prev ?? defaultNew(now)
+  let next: CardSchedule
 
   if (base.bucket === 'new' || base.bucket === 'learning') {
-    return gradeYoung(base, grade, now, prefs)
+    next = gradeYoung(base, grade, now, prefs)
+  } else if (base.bucket === 'relearn') {
+    next = gradeRelearn(base, grade, now, prefs)
+  } else {
+    next = gradeMature(base, grade, now, prefs)
   }
-  if (base.bucket === 'relearn') {
-    return gradeRelearn(base, grade, now, prefs)
+  if (grade === 'again' || grade === 'hard' || grade === 'easy') {
+    return overlayUserInterval(next, now, intervalPrefForGrade(prefs, grade))
   }
-  return gradeMature(base, grade, now, prefs)
+  return next
+}
+
+function overlayUserInterval(next: CardSchedule, now: number, pref: UserPrefs['gradeAgainInterval']): CardSchedule {
+  return {
+    ...next,
+    due: now + gradeIntervalMs(pref),
+    intervalDays: gradeIntervalDays(pref),
+  }
 }
 
 function graduateReview(now: number, ease: number, intervalDays: number, reps: number): CardSchedule {
@@ -191,6 +205,10 @@ export function previewNextIntervals(
   const grades: Grade[] = ['again', 'hard', 'good', 'easy']
   const out = {} as Record<Grade, string>
   for (const g of grades) {
+    if (g === 'again' || g === 'hard' || g === 'easy') {
+      out[g] = formatGradeInterval(intervalPrefForGrade(prefs, g))
+      continue
+    }
     const next = applyGrade(prev, g, now, prefs)
     const delta = next.due - now
     if (delta <= 0) out[g] = 'сейчас'

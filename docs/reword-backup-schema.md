@@ -1,7 +1,7 @@
 # Схема бэкапа Reword (`.backup`)
 
 Файл `reword_en.backup` — это обычная **SQLite 3**, не архив.
-В VocabDesk он читается через `sql.js` (`src/db/rewordDb.ts`).
+В CoreWords он читается через `sql.js` (`src/db/rewordDb.ts`).
 
 Проверено на дампе от 30.08.2026:
 
@@ -154,7 +154,7 @@ REG INTEGER                         -- регион; в этом дампе ве
 ```
 
 Имена на других языках заполнены частично (RUS — все 64, ITA 52, DEU 37, … ARA/POR/ZHS/ZHT — 0).
-VocabDesk берёт только `NAME_RUS`.
+CoreWords берёт только `NAME_RUS`.
 
 ### Типы ID
 
@@ -229,7 +229,7 @@ JSON-массив. `#слово#` — подсветка изучаемой фо
 ]
 ```
 
-Парсер VocabDesk: `src/lib/examples.ts` (`o` → original, `t` → translate).
+Парсер CoreWords: `src/lib/examples.ts` (`o` → original, `t` → translate).
 
 ### `POS` — битовая маска
 
@@ -277,7 +277,7 @@ JSON-массив. `#слово#` — подсветка изучаемой фо
 | 3 | выучено | 2779 |
 | 4 | закреплено | 50 |
 
-VocabDesk считает «выученным» `Q_REC >= 3`.
+CoreWords считает «выученным» `Q_REC >= 3`.
 
 Индексы: `IDX_WORD_Q_REC`, `IDX_WORD_Q_REP`, `IDX_WORD_EXT_SOURCE_EXT_SOURCE_ID`.
 
@@ -329,7 +329,7 @@ UNIQUE (SOURCE, SOURCE_ID)
 | pexels | 0 | 81 | 0 |
 | pixabay | 1 | 3 | 3 |
 
-Блоб — JPEG (`FF D8 FF E0`), 12–560 КБ. Большинство картинок — **только ссылка**; клиент качает по `SOURCE` + `SOURCE_ID` (VocabDesk: `src/lib/remotePictureUrl.ts`).
+Блоб — JPEG (`FF D8 FF E0`), 12–560 КБ. Большинство картинок — **только ссылка**; клиент качает по `SOURCE` + `SOURCE_ID` (CoreWords: `src/lib/remotePictureUrl.ts`).
 
 Одна картинка шарится между словами: 3845 картинок на 6068 слов с `PICTURE_ID` (до 14 слов на одну).
 
@@ -436,7 +436,7 @@ ADJUSTED_GOAL INTEGER             -- с поправкой клиента
 
 ---
 
-## Как VocabDesk этим пользуется
+## Как CoreWords этим пользуется
 
 Читает: `CATEGORY`, `WORD_CATEGORY`, `WORD`, `PICTURE` (мета + `CONTENT`).
 
@@ -459,7 +459,7 @@ ADJUSTED_GOAL INTEGER             -- с поправкой клиента
 9. **Прогресс** живёт на `WORD`, не на связи со словарём: выучил в Oxford — слово выучено и в `food`.
 10. Колонки `REG`, `EXT_SOURCE*`, `TRANSCRIPTION_US/BR`, `VAR`, восточноазиатские/арабские/португальские поля в этом EN-дампе пустые; их можно не заполнять, но колонки лучше сохранить — иначе другой клиент может упасть на `SELECT *` / миграциях.
 
-### Минимальный набор, чтобы VocabDesk открыл файл
+### Минимальный набор, чтобы CoreWords открыл файл
 
 Таблицы `CATEGORY`, `WORD`, `WORD_CATEGORY`; у категории непустой `NAME_RUS`; у слова `WORD` + `RUS`.
 `PICTURE` можно пустой (LEFT JOIN). Остальное — по желанию.

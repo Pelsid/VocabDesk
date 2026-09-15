@@ -33,7 +33,8 @@ export function buildSessionQueue(args: { ids: number[]; snapshot: ProgressSnaps
 
   const newIds = news.map((x) => x.id)
   shuffleInPlace(newIds)
-  const pickNew = newIds.slice(0, prefs.newPerSession)
+  const newCap = Math.max(1, prefs.dailyGoalWords || prefs.newPerSession)
+  const pickNew = newIds.slice(0, newCap)
 
   return [...pickRev, ...pickIntra, ...pickNew]
 }

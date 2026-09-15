@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { CategoryStat } from '../lib/catalogTypes'
-import { computeOxfordPathRows, pctTone, shortOxfordLabel } from '../lib/dashboardPath'
+import { computeOxfordPathRows, pctRingColor, shortOxfordLabel } from '../lib/dashboardPath'
 import type { ProgressSnapshot } from '../lib/progressTypes'
 import { useCatalogStore } from '../stores/catalog'
 import DailyProgressRing from './DailyProgressRing.vue'
@@ -34,7 +34,7 @@ const oxford = computed(() => computeOxfordPathRows(catalog.dictionaryWordIds, p
             <DailyProgressRing :done="row.localPct" :goal="100" :size="72" :stroke="7" />
             <div class="oxford-node-center">{{ row.localPct }}%</div>
           </div>
-          <div class="oxford-node-label" :class="`tone-${pctTone(row.localPct)}`">{{ shortOxfordLabel(row.name, row.id) }}</div>
+          <div class="oxford-node-label" :style="{ color: pctRingColor(row.localPct) }">{{ shortOxfordLabel(row.name) }}</div>
           <div class="oxford-node-meta muted small">
             {{ row.learnedCount.toLocaleString('ru-RU') }} / {{ row.wordCount.toLocaleString('ru-RU') }}
           </div>

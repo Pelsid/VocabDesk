@@ -12,6 +12,7 @@ set_time_limit(300);
 
 $root = dirname(__DIR__, 2);
 require_once dirname(__DIR__) . '/lib/db.php';
+require_once dirname(__DIR__) . '/lib/oxford_catalog.php';
 
 require_local_or_token();
 
@@ -86,9 +87,9 @@ function classify_dictionary(string $id): array
         'oxford3000_a2' => 'A2',
         'oxford3000_b1' => 'B1',
         'oxford3000_b2' => 'B2',
-        'oxford5000_b2' => 'B2',
         'oxford5000_c1' => 'C1',
     ];
+    $id = oxford_canonical_id($id);
     if (isset($oxford[$id]) || str_starts_with($id, 'oxford')) {
         $cefr = $oxford[$id] ?? (preg_match('/_([abc][12])$/i', $id, $m) ? strtoupper($m[1]) : null);
         $order = ['A1' => 10, 'A2' => 20, 'B1' => 30, 'B2' => 40, 'C1' => 50, 'C2' => 60][$cefr ?? ''] ?? 80;
@@ -134,21 +135,34 @@ try {
          VALUES (?, ?, ?, ?, ?, ?, ?)',
     );
     $dictIds = [];
+    $selectedById = [];
     foreach ($cats as $c) {
-        $id = (string) $c['ID'];
-        [$kind, $cefr, $baseOrder] = classify_dictionary($id);
+        $rawId = (string) $c['ID'];
+        $id = oxford_canonical_id($rawId);
+        [$kind, $cefr, $baseOrder] = classify_dictionary($rawId);
         $icon = isset($c['CUSTOM_ICON']) && trim((string) $c['CUSTOM_ICON']) !== '' ? (string) $c['CUSTOM_ICON'] : null;
+        $selected = (int) $c['IS_SELECTED'] === 1 ? 1 : 0;
+        $selectedById[$id] = (int) (($selectedById[$id] ?? 0) || $selected);
+        if (isset($dictIds[$id])) {
+            continue;
+        }
         $insDict->execute([
             $id,
-            (string) $c['NAME_RUS'],
+            oxford_display_name($rawId, (string) $c['NAME_RUS']),
             $kind,
             $cefr,
-            (int) $c['IS_SELECTED'] === 1 ? 1 : 0,
+            $selected,
             $baseOrder,
             $icon,
         ]);
-        $dictIds[] = $id;
+        $dictIds[$id] = true;
     }
+    foreach ($selectedById as $id => $selected) {
+        if ($selected) {
+            $pdo->prepare('UPDATE dictionaries SET is_selected = 1 WHERE id = ?')->execute([$id]);
+        }
+    }
+    $dictIds = array_keys($dictIds);
     $pdo->commit();
     out('Словари записаны.');
 
@@ -156,7 +170,8 @@ try {
         throw new RuntimeException('Пустой каталог словарей');
     }
 
-    $place = implode(',', array_map(static fn($id) => "'" . str_replace("'", "''", $id) . "'", $dictIds));
+    $fetchIds = array_values(array_unique([...$dictIds, ...array_keys(oxford_merge_ids())]));
+    $place = implode(',', array_map(static fn($id) => "'" . str_replace("'", "''", $id) . "'", $fetchIds));
     $links = sqlite_query_json($backup, "
         SELECT WORD_ID, CATEGORY_ID FROM WORD_CATEGORY WHERE CATEGORY_ID IN ({$place})
     ");
@@ -231,7 +246,7 @@ try {
     $insLink = $pdo->prepare('INSERT IGNORE INTO dictionary_words (dictionary_id, word_id) VALUES (?, ?)');
     $ln = 0;
     foreach ($links as $l) {
-        $insLink->execute([(string) $l['CATEGORY_ID'], (int) $l['WORD_ID']]);
+        $insLink->execute([oxford_canonical_id((string) $l['CATEGORY_ID']), (int) $l['WORD_ID']]);
         $ln++;
     }
     $pdo->commit();

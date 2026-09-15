@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { postGrade, postMaster, postResetProgress, putSettings, type DailyPayload } from '../api/client'
 import { DEFAULT_PREFS, emptySnapshot, type Grade, type ProgressSnapshot, type UserPrefs } from '../lib/progressTypes'
+import { normalizeSrsPresetOverrides, prefsFromSrsPreset, SRS_PRESETS } from '../lib/srsPresets'
+import { normalizeStudyPrefs } from '../lib/studyPrefs'
 import { appendWeakHit } from '../lib/weakWordLog'
 
 function emptyDaily(): DailyPayload {
@@ -11,6 +13,18 @@ function emptyDaily(): DailyPayload {
     streak: 0,
     weekFlags: [false, false, false, false, false, false, false],
   }
+}
+
+function mergePrefs(raw?: Partial<UserPrefs> | null): UserPrefs {
+  const prefs: UserPrefs = {
+    ...DEFAULT_PREFS,
+    ...raw,
+    srsPresetOverrides: normalizeSrsPresetOverrides(raw?.srsPresetOverrides),
+    ...normalizeStudyPrefs(raw),
+  }
+  const preset = SRS_PRESETS.find((p) => p.id === prefs.srsPresetId)
+  if (!preset) return prefs
+  return { ...prefs, ...prefsFromSrsPreset(preset, prefs.srsPresetOverrides) }
 }
 
 export const useProgressStore = defineStore('progress', {
@@ -32,7 +46,7 @@ export const useProgressStore = defineStore('progress', {
       this.snapshot = {
         v: 1,
         words: progress.words ?? {},
-        prefs: { ...DEFAULT_PREFS, ...progress.prefs },
+        prefs: mergePrefs(progress.prefs),
         mastered: progress.mastered ?? {},
         weakWordLog: progress.weakWordLog ?? [],
       }
@@ -60,11 +74,11 @@ export const useProgressStore = defineStore('progress', {
       this.revision += 1
     },
     async updatePrefs(patch: Partial<UserPrefs>) {
-      const prefs = { ...this.snapshot.prefs, ...patch }
+      const prefs = mergePrefs({ ...this.snapshot.prefs, ...patch })
       this.snapshot = { ...this.snapshot, prefs }
       this.revision += 1
       const res = await putSettings({ prefs })
-      this.snapshot = { ...this.snapshot, prefs: res.prefs }
+      this.snapshot = { ...this.snapshot, prefs: mergePrefs(res.prefs) }
       this.hasGroqKey = res.hasGroqKey
     },
     async setGroqKey(key: string) {

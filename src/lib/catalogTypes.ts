@@ -23,6 +23,7 @@ export interface WordRow {
   word: string
   rus: string | null
   transcription: string | null
+  pos?: number | null
   qRec: number
   qRep: number
   examplesRus: string | null

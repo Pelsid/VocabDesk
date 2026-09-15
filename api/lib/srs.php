@@ -9,18 +9,77 @@ const SRS_LEARNING_STEPS = [1 * SRS_MINUTE, 10 * SRS_MINUTE, 1 * SRS_DAY];
 function srs_default_prefs(): array
 {
     return [
-        'newPerSession' => 20,
-        'reviewPerSession' => 200,
+        'newPerSession' => 15,
+        'reviewPerSession' => 20,
         'graduatingIntervalDays' => 1,
-        'easyIntervalDays' => 4,
+        'easyIntervalDays' => 15,
         'dailyGoalWords' => 15,
+        'sessionDictScope' => 'selected',
         'categoryScopeMode' => 'reword',
         'customCategoryIds' => [],
         'srsPresetId' => null,
+        'srsPresetOverrides' => new stdClass(),
+        'gradeAgainInterval' => ['value' => 10, 'unit' => 'min'],
+        'gradeHardInterval' => ['value' => 5, 'unit' => 'day'],
+        'gradeEasyInterval' => ['value' => 15, 'unit' => 'day'],
+        'newWordPrompt' => 'en',
+        'reviewWordPrompt' => 'en',
+        'showPictures' => true,
+        'studyPrefsVersion' => 2,
         'displayName' => '',
         'theme' => 'dark',
         'notificationsEnabled' => false,
     ];
+}
+
+function srs_preset_defaults(): array
+{
+    return [
+        'calm_b1' => ['newPerSession' => 10, 'reviewPerSession' => 10],
+        'steady_b2' => ['newPerSession' => 15, 'reviewPerSession' => 20],
+        'intensive' => ['newPerSession' => 25, 'reviewPerSession' => 30],
+        'review_heavy' => ['newPerSession' => 5, 'reviewPerSession' => 50],
+    ];
+}
+
+function srs_sanitize_preset_overrides(mixed $raw): array
+{
+    $allowed = srs_preset_defaults();
+    $out = [];
+    if (!is_array($raw)) {
+        if ($raw instanceof stdClass) {
+            $raw = (array) $raw;
+        } else {
+            return $out;
+        }
+    }
+    foreach ($raw as $id => $row) {
+        if (!is_string($id) || !isset($allowed[$id]) || !is_array($row)) {
+            continue;
+        }
+        $out[$id] = [
+            'newPerSession' => max(5, min(99, (int) ($row['newPerSession'] ?? $allowed[$id]['newPerSession']))),
+            'reviewPerSession' => max(5, min(500, (int) ($row['reviewPerSession'] ?? $allowed[$id]['reviewPerSession']))),
+        ];
+    }
+    return $out;
+}
+
+function srs_apply_preset_load(array $prefs): array
+{
+    $prefs['srsPresetOverrides'] = srs_sanitize_preset_overrides($prefs['srsPresetOverrides'] ?? null);
+    $id = $prefs['srsPresetId'] ?? null;
+    $defaults = srs_preset_defaults();
+    if (!is_string($id) || !isset($defaults[$id])) {
+        return $prefs;
+    }
+    $over = $prefs['srsPresetOverrides'][$id] ?? [];
+    $new = max(5, min(99, (int) ($over['newPerSession'] ?? $defaults[$id]['newPerSession'])));
+    $rev = max(5, min(500, (int) ($over['reviewPerSession'] ?? $defaults[$id]['reviewPerSession'])));
+    $prefs['newPerSession'] = $new;
+    $prefs['dailyGoalWords'] = $new;
+    $prefs['reviewPerSession'] = $rev;
+    return $prefs;
 }
 
 function srs_default_new(int $now): array
@@ -62,17 +121,68 @@ function srs_graduate(int $now, float $ease, int $intervalDays, int $reps): arra
     ];
 }
 
+function srs_sanitize_interval(mixed $raw, array $fallback): array
+{
+    $unit = 'min';
+    $value = (int) ($fallback['value'] ?? 1);
+    if (is_array($raw)) {
+        $u = (string) ($raw['unit'] ?? $fallback['unit'] ?? 'min');
+        $unit = ($u === 'hour' || $u === 'day' || $u === 'min') ? $u : 'min';
+        $value = (int) ($raw['value'] ?? $fallback['value'] ?? 1);
+    }
+    return ['value' => max(1, min(999, $value)), 'unit' => $unit];
+}
+
+function srs_sanitize_prompt(mixed $raw): string
+{
+    return ($raw === 'ru' || $raw === 'mixed' || $raw === 'en') ? $raw : 'en';
+}
+
+function srs_interval_ms(array $pref): int
+{
+    $v = max(1, min(999, (int) ($pref['value'] ?? 1)));
+    $unit = (string) ($pref['unit'] ?? 'min');
+    if ($unit === 'hour') {
+        return $v * 60 * SRS_MINUTE;
+    }
+    if ($unit === 'day') {
+        return $v * SRS_DAY;
+    }
+    return $v * SRS_MINUTE;
+}
+
+function srs_overlay_grade_interval(array $next, int $now, array $prefs, string $grade): array
+{
+    $defaults = srs_default_prefs();
+    $key = $grade === 'again' ? 'gradeAgainInterval' : ($grade === 'hard' ? 'gradeHardInterval' : 'gradeEasyInterval');
+    $pref = srs_sanitize_interval($prefs[$key] ?? null, $defaults[$key]);
+    $ms = srs_interval_ms($pref);
+    $next['due'] = $now + $ms;
+    if (($pref['unit'] ?? '') === 'day') {
+        $next['intervalDays'] = max(1, (int) $pref['value']);
+    } elseif ($ms >= SRS_DAY) {
+        $next['intervalDays'] = max(1, (int) round($ms / SRS_DAY));
+    } else {
+        $next['intervalDays'] = 0;
+    }
+    return $next;
+}
+
 function srs_apply(?array $prev, string $grade, int $now, array $prefs): array
 {
     $base = $prev ?? srs_default_new($now);
     $bucket = $base['bucket'] ?? 'new';
     if ($bucket === 'new' || $bucket === 'learning') {
-        return srs_grade_young($base, $grade, $now, $prefs);
+        $next = srs_grade_young($base, $grade, $now, $prefs);
+    } elseif ($bucket === 'relearn') {
+        $next = srs_grade_relearn($base, $grade, $now, $prefs);
+    } else {
+        $next = srs_grade_mature($base, $grade, $now, $prefs);
     }
-    if ($bucket === 'relearn') {
-        return srs_grade_relearn($base, $grade, $now, $prefs);
+    if ($grade === 'again' || $grade === 'hard' || $grade === 'easy') {
+        return srs_overlay_grade_interval($next, $now, $prefs, $grade);
     }
-    return srs_grade_mature($base, $grade, $now, $prefs);
+    return $next;
 }
 
 function srs_grade_young(array $s, string $grade, int $now, array $prefs): array

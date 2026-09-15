@@ -20,6 +20,15 @@ if ($action === 'quiz_rus') {
     json_ok(['rus' => catalog_quiz_rus($ids, $exclude, $limit)]);
 }
 
+if ($action === 'quiz_en') {
+    $scope = (string) ($_GET['scope'] ?? 'selected');
+    $categoryId = isset($_GET['categoryId']) && $_GET['categoryId'] !== '' ? (string) $_GET['categoryId'] : null;
+    $exclude = (int) ($_GET['exclude'] ?? 0);
+    $limit = max(1, min(80, (int) ($_GET['limit'] ?? 48)));
+    $ids = catalog_scope_ids($uid, $scope, $categoryId, settings_prefs($uid));
+    json_ok(['en' => catalog_quiz_en($ids, $exclude, $limit)]);
+}
+
 if ($action === 'search') {
     $q = (string) ($_GET['q'] ?? '');
     json_ok(['words' => catalog_search_words($q, $uid, 60)]);
@@ -33,7 +42,7 @@ if ($action === 'ids') {
 
 $dictionaryId = (string) ($_GET['dictionaryId'] ?? '');
 if ($dictionaryId === '') {
-    json_error('Укажите dictionaryId, action=search, action=ids или action=quiz_rus');
+    json_error('Укажите dictionaryId, action=search, action=ids, action=quiz_rus или action=quiz_en');
 }
 $q = (string) ($_GET['q'] ?? '');
 json_ok(['words' => catalog_words_in_dictionary($dictionaryId, $q, $uid)]);

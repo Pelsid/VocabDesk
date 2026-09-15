@@ -1,8 +1,25 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
-import { DEFAULT_PREFS } from '../lib/progressTypes'
-import { SRS_PRESETS } from '../lib/srsPresets'
+import { DEFAULT_PREFS, type CardPromptLang, type IntervalUnit, type SrsPresetLoad } from '../lib/progressTypes'
+import {
+  clampDailyGoal,
+  clampReviews,
+  GOAL_MAX,
+  GOAL_MIN,
+  normalizeSrsPresetOverrides,
+  prefsFromSrsPreset,
+  resolvedPresetLoad,
+  REVIEW_MAX,
+  REVIEW_MIN,
+  SRS_PRESETS,
+} from '../lib/srsPresets'
+import {
+  GRADE_INTERVAL_ROWS,
+  INTERVAL_UNITS,
+  PROMPT_OPTIONS,
+  normalizeGradeInterval,
+} from '../lib/studyPrefs'
 import { applyTheme, type ThemePref } from '../lib/theme'
 import { useAuthStore } from '../stores/auth'
 import { useProgressStore } from '../stores/progress'
@@ -13,6 +30,36 @@ const auth = useAuthStore()
 const progress = useProgressStore()
 const { snapshot } = storeToRefs(progress)
 const prefs = computed(() => ({ ...DEFAULT_PREFS, ...snapshot.value.prefs }))
+
+function presetLoad(id: string): SrsPresetLoad {
+  const p = SRS_PRESETS.find((x) => x.id === id)
+  if (!p) return { newPerSession: GOAL_MIN, reviewPerSession: REVIEW_MIN }
+  return resolvedPresetLoad(p, prefs.value.srsPresetOverrides)
+}
+
+function setPresetField(id: string, field: keyof SrsPresetLoad, raw: number) {
+  const p = SRS_PRESETS.find((x) => x.id === id)
+  if (!p) return
+  const current = resolvedPresetLoad(p, prefs.value.srsPresetOverrides)
+  const nextLoad: SrsPresetLoad = {
+    ...current,
+    [field]: field === 'newPerSession' ? clampDailyGoal(raw) : clampReviews(raw),
+  }
+  const overrides = { ...normalizeSrsPresetOverrides(prefs.value.srsPresetOverrides), [id]: nextLoad }
+  const patch = prefs.value.srsPresetId === id ? { ...prefsFromSrsPreset(p, overrides), srsPresetOverrides: overrides } : { srsPresetOverrides: overrides }
+  void progress.updatePrefs(patch)
+}
+
+function setGradeInterval(key: (typeof GRADE_INTERVAL_ROWS)[number]['key'], patch: { value?: number; unit?: IntervalUnit }) {
+  const fallback = DEFAULT_PREFS[key]
+  const next = normalizeGradeInterval({ ...prefs.value[key], ...patch }, fallback)
+  const extra = key === 'gradeEasyInterval' && next.unit === 'day' ? { easyIntervalDays: next.value } : {}
+  void progress.updatePrefs({ [key]: next, ...extra })
+}
+
+function setPrompt(field: 'newWordPrompt' | 'reviewWordPrompt', value: CardPromptLang) {
+  void progress.updatePrefs({ [field]: value })
+}
 
 const currentPassword = ref('')
 const newPassword = ref('')
@@ -65,43 +112,96 @@ async function removeAccount() {
 
     <section class="dash-card profile-card">
       <h2>Обучение</h2>
-      <label class="profile-row">
-        <span>Новых слов за сессию</span>
-        <input
-          type="number"
-          min="5"
-          max="120"
-          class="profile-num"
-          :value="prefs.newPerSession"
-          @change="progress.updatePrefs({ newPerSession: Number(($event.target as HTMLInputElement).value), srsPresetId: null })"
-        />
-      </label>
-      <label class="profile-row">
-        <span>Повторений за сессию</span>
-        <input
-          type="number"
-          min="20"
-          max="400"
-          class="profile-num"
-          :value="prefs.reviewPerSession"
-          @change="progress.updatePrefs({ reviewPerSession: Number(($event.target as HTMLInputElement).value), srsPresetId: null })"
-        />
-      </label>
-      <div class="profile-block">
-        <div class="muted small">Интенсивность</div>
-        <label class="profile-radio">
-          <input type="radio" name="srs" :checked="prefs.srsPresetId == null" @change="progress.updatePrefs({ srsPresetId: null })" />
-          Вручную
-        </label>
-        <label v-for="p in SRS_PRESETS" :key="p.id" class="profile-radio">
+      <p class="muted small">Цель и повторы для режимов на экране «Учить». Выбор режима — там же.</p>
+      <div v-for="p in SRS_PRESETS" :key="p.id" class="profile-preset">
+        <div class="profile-preset-name">{{ p.label }}</div>
+        <label class="profile-preset-field">
+          <span>Слов в день</span>
           <input
-            type="radio"
-            name="srs"
-            :checked="prefs.srsPresetId === p.id"
-            @change="progress.updatePrefs({ ...p.prefs, srsPresetId: p.id })"
+            type="number"
+            class="profile-num"
+            :min="GOAL_MIN"
+            :max="GOAL_MAX"
+            :value="presetLoad(p.id).newPerSession"
+            @change="setPresetField(p.id, 'newPerSession', Number(($event.target as HTMLInputElement).value))"
           />
-          {{ p.label }}
         </label>
+        <label class="profile-preset-field">
+          <span>Повторений</span>
+          <input
+            type="number"
+            class="profile-num"
+            :min="REVIEW_MIN"
+            :max="REVIEW_MAX"
+            :value="presetLoad(p.id).reviewPerSession"
+            @change="setPresetField(p.id, 'reviewPerSession', Number(($event.target as HTMLInputElement).value))"
+          />
+        </label>
+      </div>
+    </section>
+
+    <section class="dash-card profile-card">
+      <h2>Карточка</h2>
+      <p class="muted small">Интервалы кнопок оценки, язык лица карточки и картинки.</p>
+
+      <div class="profile-subhead">Интервал у кнопок</div>
+      <div v-for="row in GRADE_INTERVAL_ROWS" :key="row.key" class="profile-interval">
+        <div class="profile-preset-name">{{ row.label }}</div>
+        <input
+          type="number"
+          class="profile-num"
+          min="1"
+          max="999"
+          :value="prefs[row.key].value"
+          @change="setGradeInterval(row.key, { value: Number(($event.target as HTMLInputElement).value) })"
+        />
+        <div class="home-seg">
+          <button
+            v-for="u in INTERVAL_UNITS"
+            :key="u.id"
+            type="button"
+            :class="{ active: prefs[row.key].unit === u.id }"
+            @click="setGradeInterval(row.key, { unit: u.id })"
+          >
+            {{ u.label }}
+          </button>
+        </div>
+      </div>
+
+      <div class="profile-subhead">Настройка изучения новых слов</div>
+      <div class="profile-choice">
+        <button
+          v-for="opt in PROMPT_OPTIONS"
+          :key="'new-' + opt.id"
+          type="button"
+          :class="{ active: prefs.newWordPrompt === opt.id }"
+          @click="setPrompt('newWordPrompt', opt.id)"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+
+      <div class="profile-subhead">Настройка повторения слов</div>
+      <div class="profile-choice">
+        <button
+          v-for="opt in PROMPT_OPTIONS"
+          :key="'rev-' + opt.id"
+          type="button"
+          :class="{ active: prefs.reviewWordPrompt === opt.id }"
+          @click="setPrompt('reviewWordPrompt', opt.id)"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+
+      <div class="profile-subhead">Показывать картинки?</div>
+      <div class="home-seg">
+        <button type="button" :class="{ active: prefs.showPictures }" @click="progress.updatePrefs({ showPictures: true })">
+          Отображать
+        </button>
+        <button type="button" :class="{ active: !prefs.showPictures }" @click="progress.updatePrefs({ showPictures: false })">
+          Скрыть
+        </button>
       </div>
     </section>
 
@@ -138,21 +238,6 @@ async function removeAccount() {
       </div>
       <p v-if="accountMsg" class="muted small">{{ accountMsg }}</p>
       <p v-if="accountErr" class="alert">{{ accountErr }}</p>
-    </section>
-
-    <section class="dash-card profile-card">
-      <h2>Расширенные настройки</h2>
-      <label class="profile-row">
-        <span>Цель на день</span>
-        <input
-          type="number"
-          min="5"
-          max="99"
-          class="profile-num"
-          :value="prefs.dailyGoalWords"
-          @change="progress.updatePrefs({ dailyGoalWords: Number(($event.target as HTMLInputElement).value) })"
-        />
-      </label>
     </section>
 
     <section class="dash-card profile-card">

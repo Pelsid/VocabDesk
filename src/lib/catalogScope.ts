@@ -1,16 +1,29 @@
 import type { CategoryStat } from './catalogTypes'
 import type { CategoryScopePrefs } from './progressTypes'
 
+export type CatalogScope = 'all' | 'selected' | 'category'
+
+export function sessionDictScope(prefs: { sessionDictScope?: string | null }): 'all' | 'selected' {
+  return prefs.sessionDictScope === 'all' ? 'all' : 'selected'
+}
+
 export function listWordIdsInScope(
   wordIdsByDict: Record<string, number[]>,
   dictionaries: CategoryStat[],
-  scope: 'selected' | 'category',
+  scope: CatalogScope,
   categoryId: string | null,
   scopePrefs?: CategoryScopePrefs | null,
 ): number[] {
   if (scope === 'category') {
     if (!categoryId) return []
     return [...(wordIdsByDict[categoryId] ?? [])]
+  }
+  if (scope === 'all') {
+    const set = new Set<number>()
+    for (const d of dictionaries) {
+      for (const wid of wordIdsByDict[d.id] ?? []) set.add(wid)
+    }
+    return [...set]
   }
   if (scopePrefs?.categoryScopeMode === 'custom') {
     const set = new Set<number>()

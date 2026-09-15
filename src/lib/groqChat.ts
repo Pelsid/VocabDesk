@@ -1,5 +1,6 @@
 /** Практика диалога через Groq (тот же ключ, что и у подсказок в сессии). */
 
+import { apiFetch } from '../api/client'
 import { GROQ_MODEL_DEFAULT } from './groqStudyHint'
 import { recordGroqRequest } from './groqUsageTracker'
 
@@ -82,9 +83,8 @@ export async function streamGroqChat(args: {
     ...args.history.map((m) => ({ role: m.role, content: m.content })),
   ]
 
-  const res = await fetch('/api/groq.php', {
+  const res = await apiFetch('/api/groq.php', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       mode: 'chat',
       stream: true,

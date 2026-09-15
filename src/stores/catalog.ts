@@ -3,6 +3,7 @@ import {
   deleteDictionary,
   fetchBootstrap,
   fetchQuizRus,
+  fetchQuizEn,
   fetchWordsByIds,
   fetchWordsInDictionary,
   postCreateDictionary,
@@ -13,7 +14,7 @@ import {
   searchWords,
 } from '../api/client'
 import type { CategoryStat, WordRow } from '../lib/catalogTypes'
-import { listWordIdsInScope } from '../lib/catalogScope'
+import { listWordIdsInScope, type CatalogScope } from '../lib/catalogScope'
 import type { CategoryScopePrefs } from '../lib/progressTypes'
 
 export const useCatalogStore = defineStore('catalog', {
@@ -79,7 +80,7 @@ export const useCatalogStore = defineStore('catalog', {
       this.dictionaryWordIds[dictionaryId] = (this.dictionaryWordIds[dictionaryId] ?? []).filter((id) => !drop.has(id))
       return d
     },
-    idsInScope(scope: 'selected' | 'category', categoryId: string | null, prefs: CategoryScopePrefs): number[] {
+    idsInScope(scope: CatalogScope, categoryId: string | null, prefs: CategoryScopePrefs): number[] {
       return listWordIdsInScope(this.dictionaryWordIds, this.dictionaries, scope, categoryId, prefs)
     },
     async ensureWords(ids: number[]): Promise<WordRow[]> {
@@ -100,8 +101,11 @@ export const useCatalogStore = defineStore('catalog', {
       for (const w of rows) this.wordCache[w.id] = w
       return rows
     },
-    quizRus(args: { scope: 'selected' | 'category'; categoryId: string | null; exclude: number }) {
+    quizRus(args: { scope: CatalogScope; categoryId: string | null; exclude: number }) {
       return fetchQuizRus(args)
+    },
+    quizEn(args: { scope: CatalogScope; categoryId: string | null; exclude: number }) {
+      return fetchQuizEn(args)
     },
   },
 })

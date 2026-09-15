@@ -173,7 +173,7 @@ function api_install_error_handlers(): void
     ini_set('log_errors', '1');
 
     set_exception_handler(static function (Throwable $e): void {
-        error_log('VocabDesk: ' . $e);
+        error_log('CoreWords: ' . $e);
         if ($e instanceof PDOException) {
             json_pdo_error($e);
         }
@@ -185,7 +185,7 @@ function api_install_error_handlers(): void
         if ($err === null || !in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
             return;
         }
-        error_log('VocabDesk fatal: ' . $err['message'] . ' @ ' . $err['file'] . ':' . $err['line']);
+        error_log('CoreWords fatal: ' . $err['message'] . ' @ ' . $err['file'] . ':' . $err['line']);
         if (!headers_sent()) {
             json_error('Внутренняя ошибка сервера', 500);
         }

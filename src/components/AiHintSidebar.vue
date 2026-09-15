@@ -6,8 +6,7 @@ import {
   type StudyHintPayload,
 } from '../lib/groqStudyHint'
 import { useGroqApiKey } from '../lib/groqApiKey'
-
-type StudyInteractionMode = 'type' | 'reveal' | 'choice' | 'cloze'
+import type { StudyInteractionMode } from '../study/pickMode'
 
 const props = defineProps<{
   wordId: number

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { sessionDictScope } from '../lib/catalogScope'
 import { DEFAULT_PREFS } from '../lib/progressTypes'
 import { computeOxfordTotals, estimateAccuracy } from '../lib/dashboardPath'
 import { allTimeTotal, monthWeekCounts, prevWeekTotal, weekCounts } from '../lib/activitySeries'
@@ -11,6 +12,7 @@ import { useProgressStore } from '../stores/progress'
 import type { AppTab } from './AppSidebar.vue'
 import DailyProgressRing from './DailyProgressRing.vue'
 import ProgressDashboard from './ProgressDashboard.vue'
+import QueueSettingsCard from './QueueSettingsCard.vue'
 
 const emit = defineEmits<{
   navigate: [tab: AppTab]
@@ -47,13 +49,13 @@ const scopePrefs = computed(() => ({
   customCategoryIds: snapshot.value.prefs.customCategoryIds ?? [],
 }))
 
-const scopeIds = computed(() => catalog.idsInScope('selected', null, scopePrefs.value))
+const scopeIds = computed(() => catalog.idsInScope(sessionDictScope(prefs.value), null, scopePrefs.value))
 const counts = computed(() => {
   void revision.value
   return countDueSnapshot({ ids: scopeIds.value, snapshot: snapshot.value, now: Date.now() })
 })
 
-const newToday = computed(() => Math.min(counts.value.fresh, prefs.value.newPerSession))
+const newToday = computed(() => Math.min(counts.value.fresh, prefs.value.dailyGoalWords || prefs.value.newPerSession))
 const reviewToday = computed(() => counts.value.dueReview)
 const hardToday = computed(() => counts.value.dueHard)
 const todayQueueSize = computed(() => counts.value.due + newToday.value)
@@ -82,6 +84,16 @@ const prevSum = computed(() => prevWeekTotal(daily.value.dayCounts))
 const weekDelta = computed(() => {
   if (prevSum.value <= 0) return weekSum.value > 0 ? 100 : 0
   return Math.round(((weekSum.value - prevSum.value) / prevSum.value) * 100)
+})
+const activityTotal = computed(() => {
+  if (activityRange.value === 'month') return monthSeries.value.reduce((a, n) => a + n, 0)
+  if (activityRange.value === 'all') return allTimeTotal(daily.value.dayCounts)
+  return weekSum.value
+})
+const activityPeriodLabel = computed(() => {
+  if (activityRange.value === 'month') return 'за 4 недели'
+  if (activityRange.value === 'all') return 'всего'
+  return 'за неделю'
 })
 const chartValues = computed(() => {
   if (activityRange.value === 'month') return monthSeries.value
@@ -172,7 +184,6 @@ const ctaLabel = computed(() => {
             <button type="button" class="btn-primary home-cta" :disabled="todayQueueSize === 0" @click="emit('startLearn')">
               ▶ {{ ctaLabel }} →
             </button>
-            <span class="home-goal-pill">Цель B1–B2</span>
           </div>
         </div>
       </article>
@@ -199,9 +210,61 @@ const ctaLabel = computed(() => {
 
       <ProgressDashboard :categories="categories" :snapshot="snapshot" :revision="revision" />
 
-      <article class="dash-card home-quote">
-        <p>Маленькие шаги каждый день приводят к большим результатам</p>
-      </article>
+      <section class="dash-card home-activity">
+        <div class="home-activity-head">
+          <h2>Активность за неделю</h2>
+          <div class="home-seg">
+            <button type="button" :class="{ active: activityRange === 'week' }" @click="activityRange = 'week'">Неделя</button>
+            <button type="button" :class="{ active: activityRange === 'month' }" @click="activityRange = 'month'">Месяц</button>
+            <button type="button" :class="{ active: activityRange === 'all' }" @click="activityRange = 'all'">Всё время</button>
+          </div>
+        </div>
+        <div class="home-activity-body">
+          <div class="home-bars" :style="{ '--n': chartValues.length }">
+            <div v-for="(n, i) in chartValues" :key="chartLabels[i]" class="home-bar-col">
+              <span class="home-bar-n">{{ n || '' }}</span>
+              <div class="home-bar-track">
+                <div class="home-bar" :class="{ on: n > 0 }" :style="{ height: `${Math.max(n ? 12 : 4, (n / chartMax) * 100)}%` }" />
+              </div>
+              <span class="muted small">{{ chartLabels[i] }}</span>
+            </div>
+          </div>
+          <div class="home-activity-side">
+            <p class="home-activity-stat">
+              Слов изучено <strong>{{ activityTotal }}</strong> {{ activityPeriodLabel }}
+            </p>
+            <div
+              v-if="activityRange === 'week'"
+              class="home-delta"
+              :class="{ down: weekDelta < 0 }"
+              title="К прошлой неделе"
+            >
+              {{ weekDelta >= 0 ? '+' : '' }}{{ weekDelta }}%
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dash-card home-queue">
+        <QueueSettingsCard />
+      </section>
+
+      <section class="dash-card home-recent">
+        <div class="section-head">
+          <h2>Последние слова</h2>
+          <button type="button" class="btn-quiet" @click="emit('navigate', 'learned')">Посмотреть все</button>
+        </div>
+        <p v-if="recentRows.length === 0" class="muted small">Пока нет оценённых карточек.</p>
+        <ul v-else class="home-recent-list">
+          <li v-for="row in recentRows" :key="row.id">
+            <span>
+              <strong>{{ row.word }}</strong>
+              <span class="muted small">{{ row.rus }}</span>
+            </span>
+            <span class="home-recent-tag">{{ row.label }}</span>
+          </li>
+        </ul>
+      </section>
 
       <section class="dash-card home-quick">
         <h2>Быстрый доступ</h2>
@@ -233,53 +296,6 @@ const ctaLabel = computed(() => {
         <div class="home-kicker">💡 Совет дня</div>
         <p>{{ tip }}</p>
       </article>
-
-      <section class="dash-card home-activity">
-        <div class="home-activity-head">
-          <h2>Активность за неделю</h2>
-          <div class="home-seg">
-            <button type="button" :class="{ active: activityRange === 'week' }" @click="activityRange = 'week'">Неделя</button>
-            <button type="button" :class="{ active: activityRange === 'month' }" @click="activityRange = 'month'">Месяц</button>
-            <button type="button" :class="{ active: activityRange === 'all' }" @click="activityRange = 'all'">Всё время</button>
-          </div>
-        </div>
-        <div class="home-activity-body">
-          <div class="home-bars" :style="{ '--n': chartValues.length }">
-            <div v-for="(n, i) in chartValues" :key="chartLabels[i]" class="home-bar-col">
-              <span class="home-bar-n">{{ n || '' }}</span>
-              <div class="home-bar-track">
-                <div class="home-bar" :class="{ on: n > 0 }" :style="{ height: `${Math.max(n ? 12 : 4, (n / chartMax) * 100)}%` }" />
-              </div>
-              <span class="muted small">{{ chartLabels[i] }}</span>
-            </div>
-          </div>
-          <div class="home-activity-side">
-            <div class="muted small">Слов изучено</div>
-            <div class="home-progress-n">{{ weekSum }}</div>
-            <div class="muted small">за эту неделю</div>
-            <div class="home-delta" :class="{ down: weekDelta < 0 }">
-              {{ weekDelta >= 0 ? '+' : '' }}{{ weekDelta }}% к прошлой неделе
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="dash-card home-recent">
-        <div class="section-head">
-          <h2>Последние слова</h2>
-          <button type="button" class="btn-quiet" @click="emit('navigate', 'learned')">Посмотреть все</button>
-        </div>
-        <p v-if="recentRows.length === 0" class="muted small">Пока нет оценённых карточек.</p>
-        <ul v-else class="home-recent-list">
-          <li v-for="row in recentRows" :key="row.id">
-            <span>
-              <strong>{{ row.word }}</strong>
-              <span class="muted small">{{ row.rus }}</span>
-            </span>
-            <span class="home-recent-tag">{{ row.label }}</span>
-          </li>
-        </ul>
-      </section>
     </div>
   </div>
 </template>

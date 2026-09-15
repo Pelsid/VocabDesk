@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { APP_DISPLAY_NAME } from '../lib/brand'
+import { APP_DISPLAY_NAME, APP_LOGO_SRC } from '../lib/brand'
 
 defineProps<{
   busy: boolean
@@ -25,7 +25,7 @@ function onFileChange(e: Event) {
   <div class="upload-screen">
     <div class="upload-card">
       <div class="brand">
-        <div class="brand-mark">VD</div>
+        <img class="brand-mark" :src="APP_LOGO_SRC" alt="" />
         <div>
           <h1>{{ APP_DISPLAY_NAME }}</h1>
           <p class="muted">

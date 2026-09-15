@@ -119,6 +119,7 @@ function catalog_map_word(array $r, int $userId = 0, array $dictionaryIds = []):
         'word' => (string) $r['lemma'],
         'rus' => $r['rus'] !== null && $r['rus'] !== '' ? (string) $r['rus'] : null,
         'transcription' => $r['transcription'] !== null && $r['transcription'] !== '' ? (string) $r['transcription'] : null,
+        'pos' => isset($r['pos']) && $r['pos'] !== null && $r['pos'] !== '' ? (int) $r['pos'] : null,
         'qRec' => 0,
         'qRep' => 0,
         'examplesRus' => $r['examples_rus'] !== null ? (is_string($r['examples_rus']) ? $r['examples_rus'] : json_encode($r['examples_rus'], JSON_UNESCAPED_UNICODE)) : null,
@@ -218,6 +219,17 @@ function catalog_word_ids_by_dictionary(int $userId): array
 
 function catalog_scope_ids(int $userId, string $scope, ?string $categoryId, array $prefs): array
 {
+    if ($scope === 'all') {
+        $stmt = db()->prepare(
+            'SELECT DISTINCT dw.word_id
+               FROM dictionary_words dw
+               JOIN dictionaries d ON d.id = dw.dictionary_id
+               JOIN words w ON w.id = dw.word_id
+              WHERE ' . catalog_dict_visible_sql('d') . ' AND ' . catalog_word_visible_sql(),
+        );
+        $stmt->execute([$userId, $userId]);
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    }
     if ($scope === 'category') {
         if (!$categoryId) {
             return [];
@@ -372,6 +384,33 @@ function catalog_quiz_rus(array $scopeIds, int $excludeId, int $limit): array
     $out = [];
     foreach ($stmt as $r) {
         $t = trim((string) $r['rus']);
+        if (mb_strlen($t) >= 2) {
+            $out[] = $t;
+        }
+        if (count($out) >= $limit) {
+            break;
+        }
+    }
+    return $out;
+}
+
+function catalog_quiz_en(array $scopeIds, int $excludeId, int $limit): array
+{
+    $ids = array_values(array_filter($scopeIds, static fn($id) => (int) $id !== $excludeId));
+    if ($ids === []) {
+        return [];
+    }
+    shuffle($ids);
+    $ids = array_slice($ids, 0, min(800, count($ids)));
+    $place = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = db()->prepare(
+        "SELECT DISTINCT TRIM(lemma) AS lemma FROM words
+         WHERE id IN ({$place}) AND lemma IS NOT NULL AND TRIM(lemma) <> ''",
+    );
+    $stmt->execute($ids);
+    $out = [];
+    foreach ($stmt as $r) {
+        $t = trim((string) $r['lemma']);
         if (mb_strlen($t) >= 2) {
             $out[] = $t;
         }

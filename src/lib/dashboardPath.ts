@@ -9,7 +9,6 @@ export const OXFORD_PATH_CATEGORY_IDS = [
   'oxford3000_a2',
   'oxford3000_b1',
   'oxford3000_b2',
-  'oxford5000_b2',
   'oxford5000_c1',
 ] as const
 
@@ -70,9 +69,7 @@ export function estimateAccuracy(snapshot: ProgressSnapshot): number {
   return den ? Math.round((reps / den) * 100) : 0
 }
 
-export function shortOxfordLabel(name: string, id: string): string {
-  if (id === 'oxford5000_b2') return 'B2+'
-  if (id === 'oxford5000_c1') return 'C1'
+export function shortOxfordLabel(name: string): string {
   const m = name.match(/\b(A1|A2|B1|B2|C1)\b/i)
   return m ? m[1].toUpperCase() : name.replace(/^Oxford\s+\d+\s*[—–-]\s*/i, '') || name
 }
@@ -82,4 +79,16 @@ export function pctTone(pct: number): 'ok' | 'teal' | 'accent' | 'warn' {
   if (pct >= 50) return 'teal'
   if (pct >= 35) return 'accent'
   return 'warn'
+}
+
+/** Цвет кольца прогресса: нижняя граница диапазона включена (10% → оранжевый). */
+export function pctRingColor(pct: number): string {
+  const n = Math.max(0, Math.min(100, pct))
+  if (n < 10) return '#F43F5E'
+  if (n < 25) return '#F97316'
+  if (n < 40) return '#F59E0B'
+  if (n < 60) return '#2DD4BF'
+  if (n < 75) return '#38BDF8'
+  if (n < 90) return '#34D399'
+  return '#10B981'
 }

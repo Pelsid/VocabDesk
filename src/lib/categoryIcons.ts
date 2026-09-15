@@ -69,7 +69,6 @@ const BY_CATEGORY_ID: Record<string, string> = {
   oxford3000_a2: '📗',
   oxford3000_b1: '📘',
   oxford3000_b2: '📙',
-  oxford5000_b2: '📔',
   oxford5000_c1: '📓',
 }
 

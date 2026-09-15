@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { APP_DISPLAY_NAME, APP_LOGO_SRC } from '../lib/brand'
 import { applyTheme, type ThemePref } from '../lib/theme'
 import { useProgressStore } from '../stores/progress'
 
@@ -69,8 +70,8 @@ function formatCount(n: number) {
   <div v-if="open" class="sidebar-backdrop" @click="emit('close')" />
   <aside class="app-sidebar" :class="{ open: props.open }" aria-label="Разделы">
     <div class="sidebar-brand">
-      <span class="sidebar-logo" aria-hidden>en</span>
-      <span class="sidebar-brand-name">VocabDesk</span>
+      <img class="sidebar-logo" :src="APP_LOGO_SRC" alt="" aria-hidden="true" />
+      <span class="sidebar-brand-name">{{ APP_DISPLAY_NAME }}</span>
     </div>
 
     <nav class="sidebar-nav">

@@ -39,7 +39,6 @@ const busy = ref(false)
 
 function catCefr(c: { id: string; cefr?: string | null; name: string }): string {
   if (c.cefr) return c.cefr.toUpperCase()
-  if (c.id === 'oxford5000_b2') return 'B2+'
   const m = c.name.match(/\b(A1|A2|B1|B2\+|B2|C1)\b/i)
   return m ? m[1].toUpperCase() : ''
 }
@@ -49,7 +48,7 @@ function matchesLevel(c: { id: string; cefr?: string | null; name: string; kind?
   const lvl = catCefr(c)
   if (filter === 'a1a2') return lvl === 'A1' || lvl === 'A2'
   if (filter === 'b1b2') return lvl === 'B1' || lvl === 'B2'
-  return lvl === 'B2+' || lvl === 'C1' || c.id === 'oxford5000_b2'
+  return lvl === 'B2+' || lvl === 'C1'
 }
 
 watch(globalQ, async (q) => {
@@ -265,32 +264,36 @@ async function purgeOrphans() {
         </div>
       </header>
 
-      <div class="dict-toolbar">
-        <div class="field">
-          <span class="field-label">Поиск</span>
-          <input v-model="globalQ" placeholder="Поиск словаря…" />
+      <div class="dict-filters">
+        <div class="dict-toolbar">
+          <div class="field dict-search">
+            <span class="field-label">Поиск</span>
+            <input v-model="globalQ" type="search" placeholder="Поиск словаря…" />
+          </div>
+          <div class="dict-toolbar-aside">
+            <div class="home-seg dict-level-seg">
+              <button type="button" :class="{ active: levelFilter === 'all' }" @click="levelFilter = 'all'">Все</button>
+              <button type="button" :class="{ active: levelFilter === 'a1a2' }" @click="levelFilter = 'a1a2'">A1–A2</button>
+              <button type="button" :class="{ active: levelFilter === 'b1b2' }" @click="levelFilter = 'b1b2'">B1–B2</button>
+              <button type="button" :class="{ active: levelFilter === 'b2plus' }" @click="levelFilter = 'b2plus'">B2+</button>
+            </div>
+            <label class="toggle">
+              <input v-model="onlySelectedCats" type="checkbox" />
+              Только активные
+            </label>
+            <span class="muted small dict-count">{{ visibleCount }} наборов</span>
+          </div>
         </div>
-        <div class="home-seg dict-level-seg">
-          <button type="button" :class="{ active: levelFilter === 'all' }" @click="levelFilter = 'all'">Все</button>
-          <button type="button" :class="{ active: levelFilter === 'a1a2' }" @click="levelFilter = 'a1a2'">A1–A2</button>
-          <button type="button" :class="{ active: levelFilter === 'b1b2' }" @click="levelFilter = 'b1b2'">B1–B2</button>
-          <button type="button" :class="{ active: levelFilter === 'b2plus' }" @click="levelFilter = 'b2plus'">B2+</button>
+        <p class="muted small dict-scope-help">
+          «В обучении» попадает в очередь «Учить». «Архив» остаётся в справочнике, но не берётся в сессию.
+        </p>
+        <div class="dict-legend" aria-label="Цвет полосы прогресса">
+          <span><i class="dict-legend-dot tone-warn" />0–34%</span>
+          <span><i class="dict-legend-dot tone-accent" />35–49%</span>
+          <span><i class="dict-legend-dot tone-teal" />50–69%</span>
+          <span><i class="dict-legend-dot tone-ok" />70%+</span>
+          <span class="muted">доля слов на стадии повторения</span>
         </div>
-        <label class="toggle">
-          <input v-model="onlySelectedCats" type="checkbox" />
-          Только активные
-        </label>
-        <span class="muted small dict-count">{{ visibleCount }} наборов</span>
-      </div>
-      <p class="muted small dict-scope-help">
-        «В обучении» попадает в очередь «Учить». «Архив» остаётся в справочнике, но не берётся в сессию.
-      </p>
-      <div class="dict-legend" aria-label="Цвет полосы прогресса">
-        <span><i class="dict-legend-dot tone-warn" />0–34%</span>
-        <span><i class="dict-legend-dot tone-accent" />35–49%</span>
-        <span><i class="dict-legend-dot tone-teal" />50–69%</span>
-        <span><i class="dict-legend-dot tone-ok" />70%+</span>
-        <span class="muted">доля слов на стадии повторения</span>
       </div>
       <p v-if="editorError" class="alert">{{ editorError }}</p>
 
@@ -303,7 +306,7 @@ async function purgeOrphans() {
         <div v-if="catalog.orphanWordCount > 0" class="dict-list">
           <article class="dict-row">
             <button type="button" class="dict-row-main" @click="emit('selectCategory', ORPHAN_DICTIONARY_ID)">
-              <span class="dict-level lvl-x">∅</span>
+              <span class="dict-icon">∅</span>
               <span class="dict-row-body">
                 <span class="dict-card-name">Без словаря</span>
                 <span class="dict-row-meta">
@@ -314,11 +317,11 @@ async function purgeOrphans() {
             <button type="button" class="btn-quiet" :disabled="busy" @click="purgeOrphans">Очистить</button>
           </article>
         </div>
-        <p v-if="mineCats.length === 0" class="muted small">Пока нет личных словарей — создайте первый.</p>
+        <p v-if="mineCats.length === 0" class="muted small dict-empty">Пока нет личных словарей — создайте первый.</p>
         <div v-else class="dict-list">
           <article v-for="{ c, localPct, training, learnedLocal } in mineCats" :key="c.id" class="dict-row">
             <button type="button" class="dict-row-main" @click="emit('selectCategory', c.id)">
-              <span class="dict-level lvl-x">{{ getCategoryGlyph(c.id, c.customIcon) }}</span>
+              <span class="dict-icon">{{ getCategoryGlyph(c.id, c.customIcon) }}</span>
               <span class="dict-row-body">
                 <span class="dict-card-name">{{ c.name }}</span>
                 <span class="dict-row-meta">
@@ -395,9 +398,8 @@ async function purgeOrphans() {
         <div class="dict-list">
           <article v-for="{ c, localPct, training, cefr, learnedLocal } in otherCats" :key="c.id" class="dict-row">
             <button type="button" class="dict-row-main" @click="emit('selectCategory', c.id)">
-              <span class="dict-level" :class="cefr ? `lvl-${cefr.toLowerCase().replace('+', 'p')}` : 'lvl-x'">
-                {{ cefr || getCategoryGlyph(c.id, c.customIcon) }}
-              </span>
+              <span v-if="cefr" class="dict-level" :class="`lvl-${cefr.toLowerCase().replace('+', 'p')}`">{{ cefr }}</span>
+              <span v-else class="dict-icon">{{ getCategoryGlyph(c.id, c.customIcon) }}</span>
               <span class="dict-row-body">
                 <span class="dict-card-name">{{ c.name }}</span>
                 <span class="dict-row-meta">

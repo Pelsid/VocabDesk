@@ -1,3 +1,4 @@
+import type { CatalogScope } from '../lib/catalogScope'
 import type { CategoryStat, WordRelation, WordRelationKind, WordRow } from '../lib/catalogTypes'
 import type { Grade, ProgressSnapshot, UserPrefs } from '../lib/progressTypes'
 
@@ -15,8 +16,9 @@ export function setUnauthorizedHandler(fn: (() => void) | null) {
   onUnauthorized = fn
 }
 
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+/** Fetch к PHP API: cookie сессии + маркер same-origin (без него POST даёт 403). */
+export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(path, {
     ...init,
     credentials: 'same-origin',
     headers: {
@@ -26,6 +28,10 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   })
+}
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await apiFetch(path, init)
   const text = await res.text()
   let parsed: unknown
   try {
@@ -133,7 +139,7 @@ export function searchWords(q: string) {
 }
 
 export function fetchQuizRus(args: {
-  scope: 'selected' | 'category'
+  scope: CatalogScope
   categoryId: string | null
   exclude: number
   limit?: number
@@ -146,6 +152,22 @@ export function fetchQuizRus(args: {
   })
   if (args.categoryId) qs.set('categoryId', args.categoryId)
   return api<{ rus: string[] }>(`/api/words.php?${qs}`).then((r) => r.rus)
+}
+
+export function fetchQuizEn(args: {
+  scope: CatalogScope
+  categoryId: string | null
+  exclude: number
+  limit?: number
+}) {
+  const qs = new URLSearchParams({
+    action: 'quiz_en',
+    scope: args.scope,
+    exclude: String(args.exclude),
+    limit: String(args.limit ?? 48),
+  })
+  if (args.categoryId) qs.set('categoryId', args.categoryId)
+  return api<{ en: string[] }>(`/api/words.php?${qs}`).then((r) => r.en)
 }
 
 export function postGrade(wordId: number, grade: Grade) {

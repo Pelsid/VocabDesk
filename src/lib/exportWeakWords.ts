@@ -9,7 +9,7 @@ export function buildWeakWordsExportText(rows: WordRow[], snapshot: ProgressSnap
   const byId = new Map(rows.map((w) => [w.id, w]))
 
   const lines: string[] = [
-    '# VocabDesk — слова после оценок «Снова» и «Сложно»',
+    '# CoreWords — слова после оценок «Снова» и «Сложно»',
     '# Формат: слово<TAB>перевод<TAB>метаданные',
     '',
   ]

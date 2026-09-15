@@ -1,5 +1,6 @@
 /** Вызов Groq (OpenAI-compatible) для подсказок при изучении слов. Ключ — в окне «Данные» (localStorage) или VITE_GROQ_API_KEY. */
 
+import { apiFetch } from '../api/client'
 import { recordGroqRequest } from './groqUsageTracker'
 
 export const GROQ_MODEL_DEFAULT = 'openai/gpt-oss-120b'
@@ -80,9 +81,8 @@ export async function fetchStudyHintFromGroq(input: FetchStudyHintInput): Promis
   const model = input.model ?? GROQ_MODEL_DEFAULT
   const user = buildUserContent(input)
 
-  const res = await fetch('/api/groq.php', {
+  const res = await apiFetch('/api/groq.php', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       mode: 'hint',
       model,

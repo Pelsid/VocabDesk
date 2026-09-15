@@ -1,4 +1,4 @@
--- VocabDesk / CoreWords — MariaDB 11.4
+-- CoreWords — MariaDB 11.4
 -- Контент словарей отдельно от прогресса. Одно слово — одна строка;
 -- связь с Oxford = членство в dictionaries.id LIKE 'oxford%'.
 -- Личные словари/слова: owner_user_id; «в обучении» — user_dictionary_state.

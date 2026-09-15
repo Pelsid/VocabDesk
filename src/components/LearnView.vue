@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { WordRow } from '../lib/catalogTypes'
+import { sessionDictScope } from '../lib/catalogScope'
 import { DEFAULT_PREFS, type CardSchedule, type CategoryScopePrefs, type Grade } from '../lib/progressTypes'
-import { SRS_PRESETS } from '../lib/srsPresets'
 import { buildSessionQueue, countDueSnapshot } from '../study/sessionQueue'
 import { useCatalogStore } from '../stores/catalog'
 import { useProgressStore } from '../stores/progress'
 import { storeToRefs } from 'pinia'
 import DailyProgressRing from './DailyProgressRing.vue'
+import QueueSettingsCard from './QueueSettingsCard.vue'
 import SessionStudyCard from './SessionStudyCard.vue'
 import type { AppTab } from './AppSidebar.vue'
 
@@ -37,7 +38,6 @@ const catalog = useCatalogStore()
 const progress = useProgressStore()
 const { snapshot, revision, daily } = storeToRefs(progress)
 
-const scope = ref<'selected' | 'category'>(props.activeCategoryId ? 'category' : 'selected')
 const queue = ref<WordRow[] | null>(null)
 const idx = ref(0)
 const starting = ref(false)
@@ -102,23 +102,16 @@ function undoLast() {
   idx.value = Math.max(0, idx.value - 1)
 }
 
-watch(
-  () => props.activeCategoryId,
-  () => {
-    if (!props.activeCategoryId && scope.value === 'category') scope.value = 'selected'
-  },
-)
-
 const scopePrefs = computed<CategoryScopePrefs>(() => ({
   categoryScopeMode: snapshot.value.prefs.categoryScopeMode ?? 'reword',
   customCategoryIds: snapshot.value.prefs.customCategoryIds ?? [],
 }))
 
+const scope = computed(() => sessionDictScope({ ...DEFAULT_PREFS, ...snapshot.value.prefs }))
+
 const categories = computed(() => catalog.dictionaries)
 
-const scopeCategoryId = computed(() => (scope.value === 'category' ? props.activeCategoryId : null))
-
-const allScopeIds = computed(() => catalog.idsInScope(scope.value, scopeCategoryId.value, scopePrefs.value))
+const allScopeIds = computed(() => catalog.idsInScope(scope.value, null, scopePrefs.value))
 
 const counts = computed(() => {
   void revision.value
@@ -127,7 +120,7 @@ const counts = computed(() => {
 
 const wordsInScopeTotal = computed(() => allScopeIds.value.length)
 
-const todayQueueSize = computed(() => counts.value.due + Math.min(counts.value.fresh, prefs.value.newPerSession))
+const todayQueueSize = computed(() => counts.value.due + Math.min(counts.value.fresh, prefs.value.dailyGoalWords || prefs.value.newPerSession))
 const etaMin = computed(() => Math.max(1, Math.round(todayQueueSize.value * 0.45)))
 
 const activeCats = computed(() => {
@@ -203,6 +196,7 @@ function stop() {
   queue.value = null
   idx.value = 0
   undoVisible.value = false
+  emit('navigate', 'home')
 }
 
 const done = computed(() => Boolean(queue.value && idx.value >= queue.value!.length))
@@ -276,18 +270,6 @@ const sessionPct = computed(() =>
   displayStats.value.answered ? Math.round((sessionCorrect.value / displayStats.value.answered) * 100) : 0,
 )
 
-const scopeSubtitle = computed(() =>
-  scope.value === 'selected'
-    ? prefs.value.categoryScopeMode === 'custom'
-      ? (prefs.value.customCategoryIds ?? []).length === 0
-        ? 'Свой набор пуст — отметьте словари в «Словаре»'
-        : `Свой набор: ${(prefs.value.customCategoryIds ?? []).length} словарей`
-      : 'Словари с флагом «в обучении»'
-    : props.activeCategoryId
-      ? 'Только открытый в «Словаре» набор'
-      : 'Сначала откройте словарь — эта опция недоступна',
-)
-
 const progressPct = computed(() => {
   const q = queue.value
   if (!q?.length) return 0
@@ -353,7 +335,7 @@ function onMarkMasteredForever() {
             Короткая первая сессия, чтобы привыкнуть к карточкам.
           </p>
           <p v-else-if="!goalDone && !nothingToday" class="muted small dash-today-remain">
-            К повторению {{ counts.due }}, новых можно взять {{ Math.min(counts.fresh, prefs.newPerSession) }}. Осталось {{ remain }}.
+            К повторению {{ counts.due }}, новых можно взять {{ Math.min(counts.fresh, prefs.dailyGoalWords || prefs.newPerSession) }}. Осталось {{ remain }}.
           </p>
           <p v-else-if="goalDone" class="muted small dash-today-remain">Можно остановиться или продолжить сверх цели.</p>
           <p v-else class="muted small dash-today-remain">Все слова в области уже в расписании на потом.</p>
@@ -390,88 +372,9 @@ function onMarkMasteredForever() {
     </div>
 
     <details class="panel queue-settings learn-advanced-panel">
-      <summary class="learn-advanced-summary">Настройки очереди</summary>
+      <summary class="learn-advanced-summary">Настройки сессии</summary>
       <div class="learn-advanced-body">
-        <div class="browse-scope" style="margin: 12px 0; padding: 0; border: 0; background: none">
-          <span class="field-label">Область</span>
-          <div class="learn-scope-switch">
-            <button type="button" :class="{ active: scope === 'selected' }" @click="scope = 'selected'">Все выбранные</button>
-            <button type="button" :class="{ active: scope === 'category' }" :disabled="!activeCategoryId" @click="scope = 'category'">
-              Текущий словарь
-            </button>
-          </div>
-          <p class="muted small browse-scope-note">{{ scopeSubtitle }}</p>
-        </div>
-
-        <label class="learn-daily-goal-label">
-          Цель на день
-          <input
-            type="number"
-            class="learn-daily-goal-input"
-            min="5"
-            max="99"
-            :value="goal"
-            @input="
-              (e) => {
-                const n = Number((e.target as HTMLInputElement).value)
-                if (!Number.isFinite(n)) return
-                void progress.updatePrefs({ dailyGoalWords: Math.max(5, Math.min(99, Math.floor(n))) })
-              }
-            "
-          />
-        </label>
-
-        <div class="srs-preset-block">
-          <div class="muted small">Профиль нагрузки</div>
-          <div class="srs-preset-grid">
-            <button type="button" class="srs-preset-chip" :class="{ active: prefs.srsPresetId == null }" @click="progress.updatePrefs({ srsPresetId: null })">
-              Вручную
-            </button>
-            <button
-              v-for="p in SRS_PRESETS"
-              :key="p.id"
-              type="button"
-              class="srs-preset-chip"
-              :class="{ active: prefs.srsPresetId === p.id }"
-              :title="p.description"
-              @click="progress.updatePrefs({ ...p.prefs, srsPresetId: p.id })"
-            >
-              {{ p.label }}
-            </button>
-          </div>
-        </div>
-        <div class="slider-row">
-          <div class="muted small">Новых за сессию: {{ prefs.newPerSession }}</div>
-          <input
-            type="range"
-            min="5"
-            max="120"
-            step="5"
-            :value="prefs.newPerSession"
-            @input="
-              progress.updatePrefs({
-                newPerSession: Number(($event.target as HTMLInputElement).value),
-                srsPresetId: null,
-              })
-            "
-          />
-        </div>
-        <div class="slider-row">
-          <div class="muted small">Повторений за сессию: {{ prefs.reviewPerSession }}</div>
-          <input
-            type="range"
-            min="20"
-            max="400"
-            step="10"
-            :value="prefs.reviewPerSession"
-            @input="
-              progress.updatePrefs({
-                reviewPerSession: Number(($event.target as HTMLInputElement).value),
-                srsPresetId: null,
-              })
-            "
-          />
-        </div>
+        <QueueSettingsCard />
       </div>
     </details>
   </div>
@@ -491,7 +394,14 @@ function onMarkMasteredForever() {
             }}
           </p>
         </div>
-        <button type="button" class="btn-quiet" @click="stop">Закончить сессию</button>
+        <button type="button" class="btn-quiet study-end-session" @click="stop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden>
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="M16 17l5-5-5-5" />
+            <path d="M21 12H9" />
+          </svg>
+          Закончить сессию
+        </button>
       </div>
 
       <div v-if="!done && queue && queue.length > 0" class="learn-progress-block">
@@ -536,7 +446,7 @@ function onMarkMasteredForever() {
         :variant-is-young="youngCard"
         :scope="scope"
         :scope-prefs="scopePrefs"
-        :category-id="scope === 'category' ? activeCategoryId : null"
+        :category-id="null"
         @memorized="onMemorized"
         @grade="onGrade"
         @mark-mastered-forever="onMarkMasteredForever"
