@@ -12,6 +12,7 @@ import AuthGate from './components/AuthGate.vue'
 import ChatView from './components/ChatView.vue'
 import GrammarView from './components/GrammarView.vue'
 import HomeDashboard from './components/HomeDashboard.vue'
+import GameView from './components/game/GameView.vue'
 import ProfileView from './components/ProfileView.vue'
 import { countNavStats } from './lib/navCounts'
 import { applyTheme } from './lib/theme'
@@ -29,6 +30,7 @@ const PAGE_TITLE: Record<Tab, string> = {
   learned: 'Изученное',
   newWords: 'Новое',
   grammar: 'Грамматика',
+  game: 'Игра',
   chat: 'Чат с AI',
   profile: 'Настройки',
 }
@@ -210,6 +212,7 @@ function onConsumedGrammarLesson() {
           @consumed-start-lesson="onConsumedGrammarLesson"
         />
         <ProfileView v-else-if="tab === 'profile'" />
+        <GameView v-else-if="tab === 'game'" @exit="go('home')" />
         <ChatView v-else />
       </main>
     </div>

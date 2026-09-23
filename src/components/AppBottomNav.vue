@@ -6,6 +6,7 @@ const emit = defineEmits<{ navigate: [tab: AppTab] }>()
 
 const items: { id: AppTab; label: string }[] = [
   { id: 'home', label: 'Главная' },
+  { id: 'game', label: 'Игра' },
   { id: 'dictionary', label: 'Словари' },
   { id: 'grammar', label: 'Грамматика' },
   { id: 'chat', label: 'Чат' },
@@ -31,6 +32,12 @@ function active(id: AppTab) {
       <span class="bottom-ico" aria-hidden>
         <svg v-if="item.id === 'home'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" />
+        </svg>
+        <svg v-else-if="item.id === 'game'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
+          <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
+          <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
+          <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
         </svg>
         <svg v-else-if="item.id === 'dictionary'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />

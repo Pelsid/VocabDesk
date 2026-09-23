@@ -5,7 +5,7 @@ import { APP_DISPLAY_NAME, APP_LOGO_SRC } from '../lib/brand'
 import { applyTheme, type ThemePref } from '../lib/theme'
 import { useProgressStore } from '../stores/progress'
 
-export type AppTab = 'home' | 'dictionary' | 'learn' | 'repeat' | 'learned' | 'newWords' | 'grammar' | 'chat' | 'profile'
+export type AppTab = 'home' | 'dictionary' | 'learn' | 'repeat' | 'learned' | 'newWords' | 'game' | 'grammar' | 'chat' | 'profile'
 
 const props = defineProps<{
   tab: AppTab
@@ -34,6 +34,7 @@ const groups = computed<NavGroup[]>(() => [
       { id: 'repeat', label: 'Повторение', count: props.counts.due },
       { id: 'newWords', label: 'Новое', count: props.counts.fresh },
       { id: 'learned', label: 'Изученное', count: props.counts.learned },
+      { id: 'game', label: 'Игра' },
     ],
   },
   {
@@ -113,6 +114,12 @@ function formatCount(n: number) {
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
               <path d="M9 7h7M9 11h5M9 15h6" />
+            </svg>
+            <svg v-else-if="item.id === 'game'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3.5" y="3.5" width="7" height="7" rx="2" />
+              <rect x="13.5" y="3.5" width="7" height="7" rx="2" />
+              <rect x="3.5" y="13.5" width="7" height="7" rx="2" />
+              <rect x="13.5" y="13.5" width="7" height="7" rx="2" />
             </svg>
             <svg v-else-if="item.id === 'chat'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
               <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />

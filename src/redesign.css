@@ -2534,15 +2534,17 @@ h2.dict-more-title {
 
   .bottom-link {
     flex: 1;
+    min-width: 0;
     border: 0;
     background: transparent;
     color: var(--muted);
     display: grid;
     justify-items: center;
     gap: 4px;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 750;
-    padding: 4px 2px;
+    line-height: 1.15;
+    padding: 4px 1px;
   }
 
   .bottom-link.active {
