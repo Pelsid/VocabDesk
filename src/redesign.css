@@ -46,10 +46,10 @@
 .sidebar-logo {
   width: 42px;
   height: 42px;
-  border-radius: 999px;
+  border-radius: 22%;
   object-fit: cover;
   display: block;
-  background: #0a0a14;
+  background: transparent;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent), 0 0 22px var(--accent-glow);
 }
 

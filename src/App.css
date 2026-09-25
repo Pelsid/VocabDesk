@@ -312,11 +312,10 @@ body {
 .brand-mark {
   width: 46px;
   height: 46px;
-  border-radius: 14px;
+  border-radius: 22%;
   object-fit: cover;
   display: block;
-  background: #0a0a14;
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: transparent;
 }
 
 .upload-card h1 {
