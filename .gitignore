@@ -27,9 +27,9 @@ api/config.local.php
 # OSPanel — локальные настройки домена и движков
 .osp/
 
-# Локальный дамп Reword (импорт в CoreWords)
-data/*.backup
-data/*.json
+# Словарные дампы для сборки карточек
+scripts/vocab-enrich/cache/
+
 
 # Vite / bundler caches (если уедут из node_modules — не попадают в git)
 .vite
