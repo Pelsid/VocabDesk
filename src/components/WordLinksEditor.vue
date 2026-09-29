@@ -60,7 +60,7 @@ watch(q, async (term) => {
 })
 
 function badge(w: WordRow): string {
-  if (w.oxfordLevels?.length) return `Oxford ${w.oxfordLevels.join(' · ')}`
+  if (w.levels?.length) return w.levels.join(' · ')
   const first = w.dictionaryIds?.[0]
   if (!first) return w.isOwn ? 'Своё' : 'Каталог'
   return catalog.dictionaries.find((d) => d.id === first)?.name ?? first
@@ -114,7 +114,7 @@ async function unlink(rel: WordRelation) {
         <button type="button" class="btn-quiet" :disabled="busy" @click="unlink(rel)">Удалить</button>
       </li>
     </ul>
-    <p v-else class="muted small">Пока нет связей. Можно связать с карточкой Oxford или своим словом.</p>
+    <p v-else class="muted small">Пока нет связей. Можно связать с карточкой каталога или своим словом.</p>
 
     <div class="word-links-add">
       <input v-model="q" class="select" placeholder="Найти слово для связи" />

@@ -25,7 +25,7 @@ function fromRow(row: WordRow): GameWord | null {
     id: row.id,
     english,
     translation,
-    level: row.oxfordLevels?.[0] ?? 'A1',
+    level: row.levels?.[0] ?? 'A1',
   }
 }
 

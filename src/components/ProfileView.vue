@@ -272,7 +272,7 @@ async function removeAccount() {
 
     <section class="dash-card profile-card danger-zone">
       <h2>Опасная зона</h2>
-      <p class="muted small">Удаление аккаунта уносит прогресс, настройки и личные словари. Общий каталог Oxford останется.</p>
+      <p class="muted small">Удаление аккаунта уносит прогресс, настройки и личные словари. Общий каталог останется.</p>
       <label class="profile-row">
         <span>Пароль для удаления</span>
         <input v-model="deletePassword" class="profile-text" type="password" autocomplete="off" />

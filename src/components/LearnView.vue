@@ -310,9 +310,9 @@ function onMarkMasteredForever() {
       <div>
         <h1>Учить</h1>
         <p class="page-sub">
-          <span v-if="isFirstUse">Начните с первых слов Oxford — сессия из 5 карточек.</span>
+          <span v-if="isFirstUse">Начните с первых слов уровня A1 — сессия из 5 карточек.</span>
           <span v-else-if="streak">Серия {{ streak }} дн.</span>
-          <span v-else>Персональный словарь Oxford</span>
+          <span v-else>Уровни A1–C2</span>
         </p>
       </div>
     </header>
@@ -366,7 +366,7 @@ function onMarkMasteredForever() {
     <div v-if="wordsInScopeTotal === 0" class="panel learn-empty-scope" role="status">
       <p class="learn-empty-title">{{ isFirstUse ? 'Начните с словаря' : 'В этой области нет слов' }}</p>
       <p class="muted small">
-        Отметьте словари «В обучении» или создайте свой список в разделе «Словари». Новый аккаунт уже видит набор Oxford по умолчанию — если список пуст, откройте «Словари» и включите нужные.
+        Отметьте словари «В обучении» или создайте свой список в разделе «Словари». Новый аккаунт уже видит уровни A1–C2 по умолчанию — если список пуст, откройте «Словари» и включите нужные.
       </p>
       <button type="button" class="btn-primary" @click="emit('navigate', 'dictionary')">Открыть словари</button>
     </div>

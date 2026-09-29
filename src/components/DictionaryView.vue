@@ -103,14 +103,14 @@ const enrichedShared = computed(() => {
     const ta = isTraining(a.id, a.isSelected)
     const tb = isTraining(b.id, b.isSelected)
     if (ta !== tb) return ta ? -1 : 1
-    if ((a.kind === 'oxford') !== (b.kind === 'oxford')) return a.kind === 'oxford' ? -1 : 1
+    if ((a.kind === 'level') !== (b.kind === 'level')) return a.kind === 'level' ? -1 : 1
     return a.name.localeCompare(b.name, 'ru')
   })
   return trainingFirst.map(enrichOne)
 })
 
-const oxfordCats = computed(() => enrichedShared.value.filter((x) => x.c.kind === 'oxford'))
-const otherCats = computed(() => enrichedShared.value.filter((x) => x.c.kind !== 'oxford'))
+const levelCats = computed(() => enrichedShared.value.filter((x) => x.c.kind === 'level'))
+const otherCats = computed(() => enrichedShared.value.filter((x) => x.c.kind !== 'level'))
 const visibleCount = computed(() => mineCats.value.length + enrichedShared.value.length)
 
 const selectedCat = computed(() => {
@@ -125,7 +125,6 @@ const selectedCat = computed(() => {
       wordCount: catalog.orphanWordCount,
       learnedCount: 0,
       kind: 'other' as const,
-      oxfordOverlap: 0,
     }
   }
   return catalog.dictionaries.find((x) => x.id === props.selectedId) ?? null
@@ -235,8 +234,6 @@ async function purgeOrphans() {
         :category-id="selectedId"
         :category-name="selectedCat.name"
         :category-glyph="getCategoryGlyph(selectedId, selectedCat.customIcon)"
-        :oxford-overlap="selectedCat.oxfordOverlap ?? 0"
-        :kind="selectedCat.kind ?? 'thematic'"
         :can-edit="Boolean(selectedCat.canEdit || selectedCat.isCustom) && selectedId !== ORPHAN_DICTIONARY_ID"
         @open-grammar="emit('openGrammar', $event)"
       />
@@ -247,7 +244,7 @@ async function purgeOrphans() {
         <div>
           <h1>Словари</h1>
           <p class="page-sub">
-            Свои списки — сверху. Oxford — фундамент до B2. Ниже тематические наборы.
+            Свои списки — сверху. Уровни A1–C2 — фундамент. Ниже тематические наборы.
           </p>
         </div>
         <div class="page-head-aside">
@@ -358,7 +355,7 @@ async function purgeOrphans() {
           <div v-for="w in globalHits" :key="w.id" class="hit">
             <span class="hit-word">{{ w.word }}</span>
             <span class="muted">{{ w.rus ?? '—' }}</span>
-            <span v-if="w.oxfordLevels?.length" class="oxford-level-badge">{{ w.oxfordLevels.join(' · ') }}</span>
+            <span v-if="w.levels?.length" class="oxford-level-badge">{{ w.levels.join(' · ') }}</span>
             <StudyBadge
               :schedule="getSchedule(snapshot.words, w.id)"
               :now="Date.now()"
@@ -370,11 +367,11 @@ async function purgeOrphans() {
 
       <p v-if="enrichedShared.length === 0 && mineCats.length === 0" class="muted small">Нет словарей по этому фильтру.</p>
 
-      <section v-if="oxfordCats.length" class="dict-list-section">
+      <section v-if="levelCats.length" class="dict-list-section">
         <div class="dict-list">
-          <article v-for="{ c, localPct, training, cefr, learnedLocal } in oxfordCats" :key="c.id" class="dict-row">
+          <article v-for="{ c, localPct, training, cefr, learnedLocal } in levelCats" :key="c.id" class="dict-row">
             <button type="button" class="dict-row-main" @click="emit('selectCategory', c.id)">
-              <span class="dict-level" :class="`lvl-${(cefr || 'x').toLowerCase().replace('+', 'p')}`">{{ cefr || 'OX' }}</span>
+              <span class="dict-level" :class="`lvl-${(cefr || 'x').toLowerCase().replace('+', 'p')}`">{{ cefr }}</span>
               <span class="dict-row-body">
                 <span class="dict-card-name">{{ c.name }}</span>
                 <span class="dict-row-meta">
@@ -405,7 +402,6 @@ async function purgeOrphans() {
                 <span class="dict-row-meta">
                   <span class="muted small">
                     {{ learnedLocal.toLocaleString('ru-RU') }} / {{ c.wordCount.toLocaleString('ru-RU') }}
-                    <template v-if="(c.oxfordOverlap ?? 0) > 0"> · {{ c.oxfordOverlap }} в Oxford</template>
                   </span>
                   <span class="dict-card-pctrow" :class="`tone-${pctTone(localPct)}`">{{ localPct }}%</span>
                 </span>

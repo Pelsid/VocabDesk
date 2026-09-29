@@ -197,7 +197,7 @@ function dueLine(sched: ReturnType<typeof getSchedule>) {
         <button type="button" class="dict-card-main" style="width: auto; flex: 1; min-width: 140px" @click="toggleOpen(w.id)">
           <div class="word-card-en">{{ w.word }}</div>
           <span v-if="w.transcription" class="ipa muted small">{{ w.transcription }}</span>
-          <span v-if="w.oxfordLevels?.length" class="oxford-level-badge">{{ w.oxfordLevels.join(' · ') }}</span>
+          <span v-if="w.levels?.length" class="oxford-level-badge">{{ w.levels.join(' · ') }}</span>
         </button>
         <div class="word-card-mid">
           <span class="diff-pill" :class="diff">{{ DIFF_LABEL[diff] }}</span>
@@ -214,7 +214,7 @@ function dueLine(sched: ReturnType<typeof getSchedule>) {
               </li>
             </ul>
           </div>
-          <GrammarLinks :lemma="w.word" :oxford-levels="w.oxfordLevels" @open="emit('openGrammar', $event)" />
+          <GrammarLinks :lemma="w.word" :levels="w.levels" @open="emit('openGrammar', $event)" />
         </div>
       </article>
     </div>

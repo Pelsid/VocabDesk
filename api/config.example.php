@@ -11,7 +11,7 @@ return [
         'pass' => '',
         'charset' => 'utf8mb4',
     ],
-    // Только для CLI-импорта (php api/tools/import-reword.php). В HTTP игнорируется.
+    // Только для CLI-импорта (php api/tools/import-thematic.php). В HTTP игнорируется.
     'user_id' => 1,
     // День daily_stats и скользящее продление сессии считаются в этой зоне.
     'timezone' => 'Asia/Almaty',

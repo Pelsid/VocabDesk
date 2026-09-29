@@ -18,8 +18,6 @@ const props = defineProps<{
   categoryId: string
   categoryName: string
   categoryGlyph: string
-  oxfordOverlap?: number
-  kind?: string
   canEdit?: boolean
 }>()
 
@@ -226,7 +224,6 @@ async function destroyWord(wordId: number) {
       </h2>
       <span class="muted small">
         {{ rows.length }} слов
-        <template v-if="kind === 'thematic' && (oxfordOverlap ?? 0) > 0"> · {{ oxfordOverlap }} также в Oxford</template>
       </span>
     </div>
 
@@ -305,7 +302,7 @@ async function destroyWord(wordId: number) {
         <div>Слово</div>
         <div>Перевод</div>
         <div>Статус</div>
-        <div>Oxford</div>
+        <div>Уровень</div>
       </div>
       <div v-for="{ w, sched, now } in rows" :key="w.id" :class="['table-row', openId === w.id ? 'open' : '']">
         <button type="button" class="row-main" @click="toggleOpen(w.id)">
@@ -318,7 +315,7 @@ async function destroyWord(wordId: number) {
             <StudyBadge :schedule="sched" :now="now" :mastered="isWordMastered(snapshot.mastered, w.id)" />
           </div>
           <div class="muted small">
-            {{ w.oxfordLevels?.length ? w.oxfordLevels.join(', ') : w.isOwn ? 'своё' : '—' }}
+            {{ w.levels?.length ? w.levels.join(', ') : w.isOwn ? 'своё' : '—' }}
           </div>
         </button>
         <div v-if="openId === w.id" class="row-detail">
@@ -346,7 +343,7 @@ async function destroyWord(wordId: number) {
             </button>
           </div>
           <WordLinksEditor :word-id="w.id" />
-          <GrammarLinks :lemma="w.word" :oxford-levels="w.oxfordLevels" @open="emit('openGrammar', $event)" />
+          <GrammarLinks :lemma="w.word" :levels="w.levels" @open="emit('openGrammar', $event)" />
         </div>
       </div>
     </div>

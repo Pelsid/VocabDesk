@@ -4,12 +4,12 @@ import { relatedGrammarForWord } from '../lib/grammarLinks'
 
 const props = defineProps<{
   lemma: string
-  oxfordLevels?: string[]
+  levels?: string[]
 }>()
 
 const emit = defineEmits<{ open: [id: string] }>()
 
-const lessons = computed(() => relatedGrammarForWord(props.lemma, props.oxfordLevels))
+const lessons = computed(() => relatedGrammarForWord(props.lemma, props.levels))
 </script>
 
 <template>

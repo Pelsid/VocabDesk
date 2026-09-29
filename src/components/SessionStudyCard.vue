@@ -343,7 +343,7 @@ function onMemorizedClick() {
               <span class="study-lang-chip">{{ promptSide === 'en' ? 'EN' : 'RU' }}</span>
             </div>
             <div v-if="(promptSide === 'en' || translationKnown) && word.transcription" class="ipa study-transcription">{{ word.transcription }}</div>
-            <div v-if="(promptSide === 'en' || translationKnown) && (wordPos.length || word.oxfordLevels?.length)" class="study-word-chips">
+            <div v-if="(promptSide === 'en' || translationKnown) && (wordPos.length || word.levels?.length)" class="study-word-chips">
               <span v-for="pos in wordPos" :key="pos" class="study-meta-chip">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden>
                   <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
@@ -351,12 +351,12 @@ function onMemorizedClick() {
                 </svg>
                 {{ pos }}
               </span>
-              <span v-for="lv in word.oxfordLevels" :key="lv" class="study-meta-chip study-meta-chip--oxford">
+              <span v-for="lv in word.levels" :key="lv" class="study-meta-chip study-meta-chip--oxford">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden>
                   <path d="M12 21s7-5.4 7-11a7 7 0 1 0-14 0c0 5.6 7 11 7 11z" />
                   <circle cx="12" cy="10" r="2.2" />
                 </svg>
-                Oxford {{ lv }}
+                {{ lv }}
               </span>
             </div>
           </div>
@@ -577,7 +577,7 @@ function onMemorizedClick() {
             </details>
             <GrammarLinks
               :lemma="word.word"
-              :oxford-levels="word.oxfordLevels"
+              :levels="word.levels"
               @open="emit('openGrammar', $event)"
             />
           </div>

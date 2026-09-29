@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
-function catalog_oxford_levels_for_word(int $wordId): array
+function catalog_levels_for_word(int $wordId): array
 {
     static $cache = null;
     if ($cache === null) {
         $cache = [];
+        $order = ['A1' => 1, 'A2' => 2, 'B1' => 3, 'B2' => 4, 'C1' => 5, 'C2' => 6];
         $sql = "SELECT dw.word_id, d.cefr
                 FROM dictionary_words dw
                 JOIN dictionaries d ON d.id = dw.dictionary_id
-                WHERE d.kind = 'oxford' AND d.cefr IS NOT NULL AND d.owner_user_id IS NULL";
+                WHERE d.kind = 'level' AND d.cefr IS NOT NULL AND d.owner_user_id IS NULL";
         foreach (db()->query($sql) as $row) {
             $wid = (int) $row['word_id'];
             $cefr = (string) $row['cefr'];
@@ -21,6 +22,10 @@ function catalog_oxford_levels_for_word(int $wordId): array
                 $cache[$wid][] = $cefr;
             }
         }
+        foreach ($cache as &$levels) {
+            usort($levels, static fn (string $a, string $b): int => ($order[$a] ?? 99) <=> ($order[$b] ?? 99));
+        }
+        unset($levels);
     }
     return $cache[$wordId] ?? [];
 }
@@ -127,7 +132,7 @@ function catalog_map_word(array $r, int $userId = 0, array $dictionaryIds = []):
         'picSource' => $r['picture_source'] !== null && $r['picture_source'] !== '' ? (string) $r['picture_source'] : null,
         'picSourceId' => $r['picture_source_id'] !== null && $r['picture_source_id'] !== '' ? (string) $r['picture_source_id'] : null,
         'picBlobLen' => 0,
-        'oxfordLevels' => catalog_oxford_levels_for_word($id),
+        'levels' => catalog_levels_for_word($id),
         'isOwn' => $owner !== null && (int) $owner === $userId,
         'dictionaryIds' => $dictionaryIds,
     ];
@@ -154,17 +159,11 @@ function catalog_dictionaries(int $userId): array
               d.id, d.name_ru, d.kind, d.cefr, d.sort_order, d.icon_key, d.owner_user_id,
               COALESCE(uds.is_selected, 0) AS is_selected,
               COUNT(DISTINCT dw.word_id) AS word_count,
-              SUM(CASE WHEN wp.mastered = 1 OR wp.bucket = 'review' THEN 1 ELSE 0 END) AS learned_count,
-              SUM(CASE WHEN ox.word_id IS NOT NULL THEN 1 ELSE 0 END) AS oxford_overlap
+              SUM(CASE WHEN wp.mastered = 1 OR wp.bucket = 'review' THEN 1 ELSE 0 END) AS learned_count
             FROM dictionaries d
             LEFT JOIN user_dictionary_state uds ON uds.dictionary_id = d.id AND uds.user_id = ?
             LEFT JOIN dictionary_words dw ON dw.dictionary_id = d.id
             LEFT JOIN word_progress wp ON wp.word_id = dw.word_id AND wp.user_id = ?
-            LEFT JOIN (
-              SELECT DISTINCT dw2.word_id
-              FROM dictionary_words dw2
-              JOIN dictionaries d2 ON d2.id = dw2.dictionary_id AND d2.kind = 'oxford' AND d2.owner_user_id IS NULL
-            ) ox ON ox.word_id = dw.word_id AND d.kind <> 'oxford'
             WHERE d.owner_user_id IS NULL OR d.owner_user_id = ?
             GROUP BY d.id
             ORDER BY (d.owner_user_id IS NULL), d.sort_order, d.name_ru";
@@ -184,7 +183,6 @@ function catalog_dictionaries(int $userId): array
             'learnedCount' => (int) $r['learned_count'],
             'kind' => (string) $r['kind'],
             'cefr' => $r['cefr'] !== null && $r['cefr'] !== '' ? (string) $r['cefr'] : null,
-            'oxfordOverlap' => (int) $r['oxford_overlap'],
         ];
     }
     return $out;

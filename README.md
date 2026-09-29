@@ -1,6 +1,6 @@
 # CoreWords
 
-Веб-приложение для изучения английских слов: каталог Oxford / тематические словари в MariaDB, SRS-прогресс на аккаунт, личные словари.
+Веб-приложение для изучения английских слов: уровни A1–C2 и тематические словари в MariaDB, SRS-прогресс на аккаунт, личные словари.
 
 Стек: Vue 3 + Pinia + Vite на фронте, PHP 8.4 + MariaDB на бэке (база `CoreWords`). Хостинг назначения — обычный shared: **PHP + MySQL/MariaDB, без Node.js в рантайме**.
 
@@ -26,7 +26,7 @@ npm install
 Словарь импортируйте локально:
 
 ```bash
-php api/tools/import-reword.php path/to/reword_en.backup
+php api/tools/import-thematic.php
 ```
 
 ## Скрипты
@@ -48,7 +48,7 @@ php api/tools/import-reword.php path/to/reword_en.backup
 5. Включить HTTPS. `auth.secureCookie` = `true`.
 6. PHP ≥ 8.2, расширения `pdo_mysql`, `mbstring`, `json`, `curl`.
 
-**Словарь импортировать локально и заливать дампом.** `api/tools/import-reword.php` на shared-хостинге, скорее всего, упадёт по таймауту.
+**Словарь импортировать локально и заливать дампом.** `api/tools/import-thematic.php` на shared-хостинге, скорее всего, упадёт по таймауту.
 
 `api/config.local.php` закрыт правилом в `api/.htaccess`. На nginx `.htaccess` не читается — добавьте эквивалентный `location ~ ^/api/config.*\.php$ { deny all; }` в конфиг сайта.
 
@@ -65,7 +65,7 @@ php api/tools/import-reword.php path/to/reword_en.backup
 
 ## Основные разделы
 
-- **Главная** — кольцо дня, серия, Oxford.
+- **Главная** — кольцо дня, серия, прогресс по уровням A1–C2.
 - **Словари** — общие наборы и личные списки, флаг «в обучении».
 - **Учить** — сессии SRS.
 - **Повторение / Изученное / Новое** — выборки по прогрессу.

@@ -1,6 +1,6 @@
 -- CoreWords — MariaDB 11.4
 -- Контент словарей отдельно от прогресса. Одно слово — одна строка;
--- связь с Oxford = членство в dictionaries.id LIKE 'oxford%'.
+-- уровень CEFR = членство в dictionaries.kind = 'level'.
 -- Личные словари/слова: owner_user_id; «в обучении» — user_dictionary_state.
 
 SET NAMES utf8mb4;
@@ -42,7 +42,7 @@ CREATE TABLE `dictionaries` (
   `id` VARCHAR(64) NOT NULL,
   `owner_user_id` INT UNSIGNED NULL DEFAULT NULL,
   `name_ru` VARCHAR(255) NOT NULL,
-  `kind` ENUM('oxford', 'thematic', 'other') NOT NULL DEFAULT 'thematic',
+  `kind` ENUM('level', 'thematic', 'other') NOT NULL DEFAULT 'thematic',
   `cefr` VARCHAR(8) DEFAULT NULL,
   `is_selected` TINYINT(1) NOT NULL DEFAULT 0,
   `sort_order` INT NOT NULL DEFAULT 0,

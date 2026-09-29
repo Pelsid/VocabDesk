@@ -54,7 +54,7 @@ export interface UserPrefs {
    */
   sessionDictScope: 'all' | 'selected'
   /**
-   * Область «все выбранные»: брать словари с флагом из бэкапа Reword или свой список ID категорий.
+   * Область «все выбранные»: словари с флагом по умолчанию или свой список ID.
    */
   categoryScopeMode: CategoryScopeMode
   /** При categoryScopeMode === custom — какие CATEGORY.ID входят в смешанную область */

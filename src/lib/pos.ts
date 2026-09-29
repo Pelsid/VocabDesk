@@ -1,4 +1,4 @@
-/** Reword POS bitmask → русские подписи части речи. */
+/** Битовая маска части речи → русские подписи. */
 
 const POS_BITS: Array<{ bit: number; label: string }> = [
   { bit: 1, label: 'Существительное' },

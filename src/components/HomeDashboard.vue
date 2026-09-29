@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { sessionDictScope } from '../lib/catalogScope'
 import { DEFAULT_PREFS } from '../lib/progressTypes'
-import { computeOxfordTotals, estimateAccuracy } from '../lib/dashboardPath'
+import { computeLevelTotals, estimateAccuracy } from '../lib/dashboardPath'
 import { allTimeTotal, monthWeekCounts, prevWeekTotal, weekCounts } from '../lib/activitySeries'
 import { countDueSnapshot } from '../study/sessionQueue'
 import { useAuthStore } from '../stores/auth'
@@ -60,12 +60,12 @@ const reviewToday = computed(() => counts.value.dueReview)
 const hardToday = computed(() => counts.value.dueHard)
 const todayQueueSize = computed(() => counts.value.due + newToday.value)
 
-const oxfordTotals = computed(() => {
+const levelTotals = computed(() => {
   void revision.value
-  return computeOxfordTotals(catalog.dictionaryWordIds, snapshot.value)
+  return computeLevelTotals(catalog.dictionaryWordIds, snapshot.value)
 })
-const oxfordPct = computed(() =>
-  oxfordTotals.value.total ? Math.round((oxfordTotals.value.learned / oxfordTotals.value.total) * 100) : 0,
+const levelPct = computed(() =>
+  levelTotals.value.total ? Math.round((levelTotals.value.learned / levelTotals.value.total) * 100) : 0,
 )
 const accuracy = computed(() => {
   void revision.value
@@ -192,18 +192,18 @@ const ctaLabel = computed(() => {
         <div class="home-kicker">Твой прогресс</div>
         <div class="home-progress-main">
           <div class="home-progress-ring">
-            <DailyProgressRing :done="oxfordTotals.learned" :goal="Math.max(1, oxfordTotals.total)" :size="132" :stroke="11" />
-            <div class="ring-center home-ring-pct">{{ oxfordPct }}%</div>
+            <DailyProgressRing :done="levelTotals.learned" :goal="Math.max(1, levelTotals.total)" :size="132" :stroke="11" />
+            <div class="ring-center home-ring-pct">{{ levelPct }}%</div>
           </div>
           <div>
             <div class="muted small">Изучено слов</div>
-            <div class="home-progress-n">{{ oxfordTotals.learned.toLocaleString('ru-RU') }}</div>
-            <div class="muted small">из {{ oxfordTotals.total.toLocaleString('ru-RU') }}</div>
+            <div class="home-progress-n">{{ levelTotals.learned.toLocaleString('ru-RU') }}</div>
+            <div class="muted small">из {{ levelTotals.total.toLocaleString('ru-RU') }}</div>
           </div>
         </div>
         <div class="home-progress-foot">
           <div><span class="muted small">Сегодня</span><strong>{{ todayLearned }}</strong></div>
-          <div><span class="muted small">Всего</span><strong>{{ oxfordTotals.learned.toLocaleString('ru-RU') }}</strong></div>
+          <div><span class="muted small">Всего</span><strong>{{ levelTotals.learned.toLocaleString('ru-RU') }}</strong></div>
           <div><span class="muted small">Средняя точность</span><strong>{{ accuracy }}%</strong></div>
         </div>
       </article>
@@ -282,7 +282,7 @@ const ctaLabel = computed(() => {
           <button type="button" class="quick-card" @click="emit('navigate', 'learned')">
             <span class="quick-ico green" aria-hidden>✓</span>
             <span class="quick-title">Изученное</span>
-            <span class="muted small">{{ oxfordTotals.learned.toLocaleString('ru-RU') }} слов</span>
+            <span class="muted small">{{ levelTotals.learned.toLocaleString('ru-RU') }} слов</span>
           </button>
           <button type="button" class="quick-card" @click="emit('navigate', 'newWords')">
             <span class="quick-ico orange" aria-hidden>★</span>

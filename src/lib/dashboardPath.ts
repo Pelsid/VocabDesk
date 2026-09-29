@@ -3,16 +3,17 @@ import { listWordIdsInCategory } from './catalogScope'
 import { getSchedule, isReviewStageForDictionaryPct, isWordMastered } from '../study/localClassifier'
 import type { ProgressSnapshot } from './progressTypes'
 
-/** Полосы Oxford из типичного бэкапа Reword — для ориентира A1→C1 (не экзамен CEFR). */
-export const OXFORD_PATH_CATEGORY_IDS = [
-  'oxford3000_a1',
-  'oxford3000_a2',
-  'oxford3000_b1',
-  'oxford3000_b2',
-  'oxford5000_c1',
+/** Уровни A1–C2 общего каталога. */
+export const LEVEL_PATH_CATEGORY_IDS = [
+  'level_a1',
+  'level_a2',
+  'level_b1',
+  'level_b2',
+  'level_c1',
+  'level_c2',
 ] as const
 
-export interface OxfordPathRow {
+export interface LevelPathRow {
   id: string
   name: string
   wordCount: number
@@ -20,13 +21,13 @@ export interface OxfordPathRow {
   localPct: number
 }
 
-export function computeOxfordPathRows(
+export function computeLevelPathRows(
   wordIdsByDict: Record<string, number[]>,
   categories: CategoryStat[],
   snapshot: ProgressSnapshot,
-): OxfordPathRow[] {
-  const rows: OxfordPathRow[] = []
-  for (const id of OXFORD_PATH_CATEGORY_IDS) {
+): LevelPathRow[] {
+  const rows: LevelPathRow[] = []
+  for (const id of LEVEL_PATH_CATEGORY_IDS) {
     const c = categories.find((x) => x.id === id)
     if (!c) continue
     const ids = listWordIdsInCategory(wordIdsByDict, id)
@@ -41,12 +42,12 @@ export function computeOxfordPathRows(
   return rows
 }
 
-export function computeOxfordTotals(
+export function computeLevelTotals(
   wordIdsByDict: Record<string, number[]>,
   snapshot: ProgressSnapshot,
 ): { learned: number; total: number } {
   const ids = new Set<number>()
-  for (const id of OXFORD_PATH_CATEGORY_IDS) {
+  for (const id of LEVEL_PATH_CATEGORY_IDS) {
     for (const wid of listWordIdsInCategory(wordIdsByDict, id)) ids.add(wid)
   }
   let learned = 0
@@ -69,9 +70,9 @@ export function estimateAccuracy(snapshot: ProgressSnapshot): number {
   return den ? Math.round((reps / den) * 100) : 0
 }
 
-export function shortOxfordLabel(name: string): string {
-  const m = name.match(/\b(A1|A2|B1|B2|C1)\b/i)
-  return m ? m[1].toUpperCase() : name.replace(/^Oxford\s+\d+\s*[—–-]\s*/i, '') || name
+export function shortLevelLabel(name: string): string {
+  const m = name.match(/\b(A1|A2|B1|B2|C1|C2)\b/i)
+  return m ? m[1].toUpperCase() : name
 }
 
 export function pctTone(pct: number): 'ok' | 'teal' | 'accent' | 'warn' {

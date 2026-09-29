@@ -81,7 +81,7 @@ function addLesson(hits: GrammarLesson[], id: string) {
   hits.push(lesson)
 }
 
-export function relatedGrammarForWord(lemma: string, oxfordLevels?: string[]): GrammarLesson[] {
+export function relatedGrammarForWord(lemma: string, levels?: string[]): GrammarLesson[] {
   const w = lemma.toLowerCase().trim()
   const hits: GrammarLesson[] = []
   for (const id of LEMMA_LESSONS[w] ?? []) addLesson(hits, id)
@@ -99,8 +99,8 @@ export function relatedGrammarForWord(lemma: string, oxfordLevels?: string[]): G
     }
   }
 
-  if (hits.length === 0 && oxfordLevels?.[0]) {
-    const lv = oxfordLevels[0].replace(/[^a-z0-9]/gi, '').toUpperCase()
+  if (hits.length === 0 && levels?.[0]) {
+    const lv = levels[0].replace(/[^a-z0-9]/gi, '').toUpperCase()
     const fallback = GRAMMAR_LESSONS.find((l) => l.level === lv)
     if (fallback) addLesson(hits, fallback.id)
   }

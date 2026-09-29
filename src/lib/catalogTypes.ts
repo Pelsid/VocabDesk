@@ -1,4 +1,4 @@
-export type DictionaryKind = 'oxford' | 'thematic' | 'other'
+export type DictionaryKind = 'level' | 'thematic' | 'other'
 
 export const ORPHAN_DICTIONARY_ID = '__orphans__'
 
@@ -15,7 +15,6 @@ export interface CategoryStat {
   learnedCount: number
   kind?: DictionaryKind
   cefr?: string | null
-  oxfordOverlap?: number
 }
 
 export interface WordRow {
@@ -31,7 +30,7 @@ export interface WordRow {
   picSource: string | null
   picSourceId: string | null
   picBlobLen: number
-  oxfordLevels?: string[]
+  levels?: string[]
   isOwn?: boolean
   dictionaryIds?: string[]
 }
